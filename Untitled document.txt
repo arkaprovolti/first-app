@@ -55,7 +55,7 @@ sudo yum upgrade
 16. sudo mount -o remount, size=2G /tmp
 17. df -h
 18. vim /etc/fstab
-19. tmpfs /tmp tmpfs defaults,noatime,mode=1777,size=2G
+19. tmpfs /tmp tmpfs defaults,noatime,mode=1777,size=2G 0 0
 20. Sudo mount -a
 21. Systemctl daemon-reload
 22. Reboot instance
@@ -87,3 +87,4 @@ Tomcat server setup
    13. Cd conf
 
    14. find -name context.xml
+
