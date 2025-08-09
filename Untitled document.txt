@@ -42,6 +42,7 @@ Jenkins
 https://pkg.jenkins.io/redhat-stable/jenkins.repo
 5. Yum repolist all
 6. sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+sudo yum upgrade
 7. Instance -> security groups -> select your one -> edit inbound rules ->add custom tcp -> port range 8080 -> 0.0.0.0/0
 8. Now copy public ip : 8080
 9. sudo yum install java-17-amazon-corretto -y
@@ -84,4 +85,5 @@ Tomcat server setup
    11. chmod +x startup.sh
    12. chmod +x shutdown.sh
    13. Cd conf
+
    14. find -name context.xml
