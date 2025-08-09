@@ -101,3 +101,21 @@ Instance -> security groups -> select your one -> edit inbound rules ->add custo
 Now copy public ip : 8080
 
 
+
+
+
+Integrating java GitHub repo with Jenkins (after Jenkins server is setup)
+
+yum install git -y
+yum install maven -y
+mvn -v  --> can see maven hom path and java path
+Now you gotta install plugins - maven integration, deploy to container, GitHub integration
+Now restart Jenkins
+Now you gotta path set -> Manage Jenkins -> Tools -> add jdk ->java path -> maven- maven path
+Now we gotta integrate jenkins server with our github repo.
+26. Payload url should look like http://51.20.118.218:8080/github-webhook/
+27. You gotta get secret, for this go to jenkins -> security -> create api token, githooks -> allow on agents.
+Now new build -> maven project -> git repo https paste -> untick snapshot -> apply and save
+
+
+
