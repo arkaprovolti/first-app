@@ -1,0 +1,14 @@
+Question: 
+Create a user Deepak and set password, and give rights to Deepak so that he can create different user
+
+
+cd
+useradd deepak
+passwd deepak
+su -deepak
+vim /etc/sudoers
+   root ALL=(ALL) ALL
+   deepak ALL=(ALL) /usr/sbin/useradd, /usr/bin/passwd
+
+sudo useradd numan
+su -numan
