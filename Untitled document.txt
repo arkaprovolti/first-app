@@ -72,19 +72,32 @@ Cd /var/lib/jenkins -> jenkins.model…….xml -> open it in vim -> we got an ip
 
 
 Tomcat server setup
-   1. 8080 port inbound rules
-   2. Copy core tar.gz
-   3.  wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.108/bin/apache-tomcat-9.0.108.tar.gz
-   4. tar xvzf apache-tomcat-9.0.108.tar.gz
-   5. rm -rf apache-tomcat-9.0.108.tar.gz
-   6.  cd  apache-tomcat-9.0.108
-   7. yum install java -y
-   8. Cd bin
-   9. ls
-   10. Google Step by Step guide to install Apache Tomcat on Amazon Linux by  Medium
-   11. chmod +x startup.sh
-   12. chmod +x shutdown.sh
-   13. Cd conf
+   1. yum install java -y
+tar -xvzf apache-tomcat-10.1.44.tar.gz
+mv apache-tomcat-10.1.44.tar.gz /tmp
+ cd apache-tomcat-10.1.44
+cd bin/
+chmod +x startup.sh
+chmod +x shutdown.sh
+cd ..
+cd apache-tomcat-10.1.44
+find -name context.xml -> 3 files be created -> now we gotta last 3 run each of em in vim
+vim ./webapps/examples/META-INF/context.xml
+cd conf
+vim tomcat-users.xml
+push given lines between --> and </tomcat-users>: 
+    <role rolename="manager-gui"/>
+<role rolename="manager-script"/>
+<role rolename="manager-jmx"/>
+<role rolename="manager-status"/>   
+<user username="admin" password="admin" roles="manager-gui,manager-script,manager-jmx,manager-status"/>
+<user username="deployer" password="deployer" roles="manager-script"/>
+<user username="tomcat" password="s3cret" roles="manager-gui"/>
 
-   14. find -name context.xml
+cd bin
+./startup.sh
+
+Instance -> security groups -> select your one -> edit inbound rules ->add custom tcp -> port range 8080 -> 0.0.0.0/0
+Now copy public ip : 8080
+
 
