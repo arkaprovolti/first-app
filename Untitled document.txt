@@ -73,6 +73,8 @@ Cd /var/lib/jenkins -> jenkins.model…….xml -> open it in vim -> we got an ip
 
 Tomcat server setup
    1. yum install java -y
+yum install wget
+wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.108/bin/apache-tomcat-9.0.108.tar.gz
 tar -xvzf apache-tomcat-10.1.44.tar.gz
 mv apache-tomcat-10.1.44.tar.gz /tmp
  cd apache-tomcat-10.1.44
@@ -116,6 +118,7 @@ Now we gotta integrate jenkins server with our github repo.
 26. Payload url should look like http://51.20.118.218:8080/github-webhook/
 27. You gotta get secret, for this go to jenkins -> security -> create api token, githooks -> allow on agents.
 Now new build -> maven project -> git repo https paste -> untick snapshot -> apply and save
+
 
 
 
