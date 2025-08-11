@@ -157,3 +157,54 @@ Now that account id can see your AMI into his, he can make instance of that and 
 
 
 
+
+
+
+
+Creating a template and launching 2 instances
+
+Ec2->Launch templates -> Create new template -> My AMIS -> owned by me ->  EBS Volume 10gb gp2
+Go to a instance -> Launch instance from template
+Now I want script automatically triggered -> Advanced Settings -> User Data ->
+	yum install httpd -y
+	cat > index.html
+	systemctl start httpd
+	systemctl enable httpd
+	useradd John
+	passwd John
+create launch template
+Now, go to an instance and launch instance from template -> give no. of instances 2 -> launch instance
+Now we can see 2 instances loaded for the given templat -> You can see if public ip is pasted with port 80 (make sure to configure port 80 in inbound rules)
+
+We can modify template by launching template -> Modify template
+
+
+
+
+
+Creating Volume in an instance
+
+1. lsblk
+2. Now we will create 5 gb volume -> EC2 -> volume -> 5GB
+3. Now tick the created volume -> actions -> attach volume -> attach our created instance -> give a device ->
+4. lsblk -> we can see our new volume now
+5. Now how to access our new disk??
+6. lsblk -fs -> we can't see our 5 gb created volume.
+7. blkid -> This will show our UUID
+8. mkdir /data
+9. mount /dev/xvdb /data
+df -h
+cd /data/
+touch Sanjaya.txt{1....100} ->100 blank files created
+ll
+Now temporary mounting is done. For permanent mounting, we have to follow next steps.
+You can get uiid from blkid
+vim /etc/fstab -> write
+	/dev/xvdb	/data	ext4	defaults 0 0
+Restart instance
+
+
+
+
+
+
