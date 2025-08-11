@@ -122,3 +122,38 @@ Now new build -> maven project -> git repo https paste -> untick snapshot -> app
 
 
 
+
+
+
+
+
+
+
+
+Launching index.html on httpd server
+
+1. Launch an ec2 instance
+yum install httpd -y
+rpmquery httpd
+cd /var/www/html
+ cat > index.html
+give port no.80 
+systemctl start httpd
+systemctl enable httpd
+http://54.235.42.184/:80
+
+
+Making AMI of instance
+1. go to your instance
+actions -> image ->create image.
+the ami will be created in ami catalog -> my ami
+Now launch instance with AMI
+Create instance
+You will see the same machine content will be copied into a different machine
+Now you want to share this AMI for a different account, so go to AMI -> Shared account id ->add account id
+Now that account id can see your AMI into his, he can make instance of that and the files will be shared.
+
+
+
+
+
