@@ -204,6 +204,118 @@ vim /etc/fstab -> write
 Restart instance
 
 
+Extending root volume of an instance
+
+1. Launch an instance
+2. create an httpd server
+yum install httpd -y
+rpmquery httpd
+cd /var/www/html
+ cat > index.html
+give port no.80 
+systemctl start httpd
+systemctl enable httpd
+curl http://localhost -> now the server is live
+df -h -> we can see /dev/xvda1 is 10 Gb, which isn't enough for us en, we gotta increase its volume
+Now go to volume -> select the volume of the created instance -> modify volume
+Now change size to 20 gb
+df -h -> but still 10 gb is visible in /dev/xdva1 because OS can read only that storage which have filesystem
+So google how to extend xfs filesystem in rhel 8 in aws ec2
+growpart /dev/xvda1
+growpart /dev/xvda 1
+sudo xfs_growfs -d /
+df -h -> Now /dev/xvda1 size is increased to 20 gb
+
+
+
+
+
+Creating a new volume and attaching it with our instance, and also make 2 partitions of this new volume
+
+Create new volume - 7gb, attach it with our instance
+fdisk -l
+Now, for partitioning we'll use MS DOS Partition scheme
+lsblk
+fdisk /dev/xvdb
+m
+n
+e
+4
+ give both sector empty
+p
+lsblk -> xvdb5 and xvdb6 created we can see
+fdisk -l
+Now we gotta create mount point. We can use either ext4 or xfs filesystem for xvdb5 and xvdb6 partition.
+Now create 2 directories, and mount both in these directories.
+mkdir /devops
+mkdir /data
+mount /dev/xvdb5 /data/
+mount /dev/xvdb6 /devops/
+cd /devops
+touch arka.txt{1...5}
+
+Now if we wanna unmount them and detach them from cloud, and then delete the volume
+umount /devops
+umount /data
+
+
+
+
+
+Data replicate in ec2 into different region same zone
+
+1. HW given ->  Data replicate in ec2 into same region different zone
+For this we have to use snapshot. It inherits all zones of our region. Snapshot is stored in AWS S3 in backend, but not reachable for us.
+2. Our Volume -> create snapshot -> create snapshot
+3. Now choose different region and go to snapshot (Ohio - us-east-1b) -> not reachable. Because Snapshot is a region based service. Now copy snapshot and choose us-east-2.
+
+
+
+
+Data replicate in ec2 into same region different zone
+
+For this we have to use snapshot. It inherits all zones of our region. Snapshot is stored in AWS S3 in backend, but not reachable for us.
+2. Our Volume -> create snapshot -> create snapshot
+3. Now for the created snapshot -> we create volume from snapshot and choose a different region.
+Now create an instance for that volume
+
+
+Data replication in EFS by 3 different machines in 3 different zones in same region
+
+1. Create 3 instances 8 gb each (amazon Linux, redhat, ubuntu) in 3 different regions
+2. Same security group with all 3 machines
+3. Search EFS -> create file system 
+4. For the file system created -> view ->edit
+We gotta install nfs in all of 3 machines (nfs is by default installed in amazon Linux)
+amazon machine -> rpmquery nfs-utils
+		systemctl start nfs-server.service
+		systemctl enable nfs-server.service
+		systemctl status
+redhat -> 
+	yum install nfs-utils -y
+	systemctl start nfs-server.service
+		systemctl enable nfs-server.service
+		systemctl status
+
+ubuntu ->
+	apt update -y
+	apt install nfs-common
+	systemctl start nfs-utils.service
+	systemctl enable nfs-utils.service
+we went to security group and added nfs.
+Now go EFS -> file systems -> network -> managet -> security group changed to nfs - a,b,c keep ; deleted rest.
+Now we go to our filesystem -> Attach -> Mount via DNS -> copy "using the NFS client" ->
+sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-034ce5eaefe890aad.efs.us-east-1.amazonaws.com:/ efs
+
+now we create a directory (data) on either machine in root (for easy), paste the copied sudo mount... and replace efs with our directory.
+
+
+Now we create another directory in another machine, and paste sudo mount ... and replace efs with our directory, create files in there -> touch fk.txt{1..10}
+
+Now, in our previous mounted machine, in the mounted directory, we can find our files created in previous machine.
+
+
+
 
 
 
