@@ -320,3 +320,174 @@ Now, in our previous mounted machine, in the mounted directory, we can find our 
 
 
 
+
+
+
+Creating auto scaling
+
+
+
+
+
+The Plan
+We will replace your 4 manually-managed EC2 instances with an Auto Scaling Group (ASG) that automatically manages a fleet of identical instances.
+
+Here are the components we'll create:
+
+AMI (Amazon Machine Image): This will be a "snapshot" or template of your perfectly configured EC2 instance. The ASG will use this to launch new, identical servers.
+
+Launch Template: This is a blueprint that tells the ASG how to launch new instances (which AMI to use, what instance type, which security group, etc.).
+
+Auto Scaling Group (ASG): This is the manager. It will monitor your instances and automatically launch new ones (scale-out) when traffic is high or terminate them (scale-in) when traffic is low.
+
+Step-by-Step Process in the AWS Console
+Step 1: Create a "Golden Image" (AMI)
+First, we need to create a template from one of your existing, working instances.
+
+Navigate to the EC2 Dashboard in the AWS Console.
+
+In the left menu, click on Instances.
+
+Select one of your 4 running instances that is fully configured with your application and all necessary software.
+
+Click the Actions button at the top right, then navigate to Image and templates -> Create image.
+
+On the "Create image" page:
+
+Image name: Give it a clear, versioned name, like my-app-server-v1.0.
+
+Image description: Add a helpful description, such as Web server for my application, includes Node.js and all dependencies.
+
+No reboot: For the best image quality, it's recommended to let AWS reboot the instance. If you absolutely cannot have a brief moment of downtime on this specific instance, you can check Enable - No reboot, but the standard practice is to allow it.
+
+Click Create image.
+
+You can monitor its progress by going to AMIs in the left navigation pane. Wait for the status to change from pending to available.
+
+Step 2: Create a Launch Template
+Now we'll create the blueprint that the Auto Scaling Group will use.
+
+In the EC2 Dashboard's left menu, under "Instances", click on Launch Templates.
+
+Click the Create launch template button.
+
+Fill out the form:
+
+Launch template name: Give it a descriptive name, like my-app-launch-template-v1.
+
+Template version description: Something like Initial template for the main web application.
+
+Auto Scaling guidance: It's helpful to check the box "Provide guidance to help me set up a template for use with EC2 Auto Scaling".
+
+Application and OS Images (Amazon Machine Image): In the search bar, select My AMIs from the dropdown. Then, choose the AMI you created in Step 1 (e.g., my-app-server-v1.0).
+
+Instance type: Select the same instance type as your current machines (e.g., t2.micro, t3.small).
+
+Key pair (login): Select the .pem key pair you use to SSH into your existing instances.
+
+Networking settings:
+
+Leave Subnet as "Don't include in launch template". The Auto Scaling Group will handle this.
+
+Security groups: This is critical. Click "Select existing security group" and choose the same security group your current 4 instances use. This ensures new instances can receive traffic from the Load Balancer.
+
+Click Create launch template.
+
+Step 3: Create the Auto Scaling Group
+This is the final step where everything comes together.
+
+In the left menu of the EC2 Dashboard, scroll down to the bottom and click on Auto Scaling Groups (under "Auto Scaling").
+
+Click Create Auto Scaling group.
+
+Wizard - Step 1: Choose launch template or configuration
+
+Auto Scaling group name: my-application-asg
+
+Launch template: Select the launch template you just created (my-app-launch-template-v1). The details should auto-populate.
+
+Click Next.
+
+Wizard - Step 2: Choose instance launch options
+
+Network (VPC): Select the VPC your current instances are in.
+
+Availability Zones and subnets: This is very important. Select all the subnets that your Load Balancer is configured to send traffic to. This allows the ASG to launch instances across different Availability Zones for high availability.
+
+Click Next.
+
+Wizard - Step 3: Configure advanced options
+
+Load balancing: Select Attach to an existing load balancer.
+
+Choose the option Choose from your load balancer target groups.
+
+From the dropdown, select the exact target group that your Load Balancer is currently using.
+
+Health Checks: Check the box for Turn on Elastic Load Balancing (ELB) health checks. This tells the ASG to trust the Load Balancer's health report, which is more reliable than a simple instance check.
+
+Health check grace period: Set this to 300 seconds. This gives new instances 5 minutes to fully boot up and start your application before the ASG starts monitoring their health.
+
+Click Next.
+
+Wizard - Step 4: Configure group size and scaling policies
+
+Group Size:
+
+Desired capacity: The number of instances you want running normally. Let's set it to 2 to start.
+
+Minimum capacity: The absolute minimum number of instances. Set to 1.
+
+Maximum capacity: The maximum number of instances it can scale up to. Let's set it to 6.
+
+Scaling Policies: This is the "auto" part.
+
+Select Target tracking scaling policy.
+
+Metric type: Choose Average CPU utilization.
+
+Target value: Set it to 50. This creates a simple, effective rule:
+
+If average CPU across all instances goes above 50%, the ASG will add new instances.
+
+If average CPU is below 50%, the ASG will remove instances (down to your minimum).
+
+Click Next through the remaining steps (Add notifications, Add tags), reviewing the configuration on the final page.
+
+Wizard - Step 5: Review
+
+Look over all your settings to ensure they are correct.
+
+Click Create Auto Scaling group.
+
+Step 4: Verify and Clean Up
+Verify:
+
+Go to the Auto Scaling Groups page. You will see your new ASG initializing.
+
+Go to the EC2 Instances page. You will see 2 new instances being launched by the ASG.
+
+Go to your Target Group page. After a few minutes, you'll see these 2 new instances get registered and their status should eventually become healthy.
+
+Clean Up (Crucial Step):
+
+Once your new ASG-managed instances are healthy in the target group, your application is being served by the new, automated setup.
+
+To avoid paying for double the servers, you must now terminate the original 4 EC2 instances that you created manually. Select them on the Instances page and choose Instance state -> Terminate instance.
+
+You are all set! Your infrastructure is now automated. It will maintain the desired number of instances, replace any that fail, and scale automatically based on CPU load.
+
+Google Privacy PolicyOpens in a new window
+Google Terms of ServiceOpens in a new window
+Your privacy & Gemini AppsOpens in a new window
+Gemini may display inaccurate info, including about people, so double-check its responses.
+
+
+
+
+
+
+
+
+
+
