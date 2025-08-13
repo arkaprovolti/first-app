@@ -323,6 +323,148 @@ Now, in our previous mounted machine, in the mounted directory, we can find our 
 
 
 
+Creating a S3 bucket and access it from Amazon Linux instance (and also creating files in machine which shall be reflected in s3 bucket)
+
+
+s3-> Create bucket _> bucket name, ACLs diabled ->unlock ->acknowledge -> create bucket
+Now upload some data on bucket
+Now you can't access object with object link.
+in permission -> ACl was disabled. So gotta give permission for bucket
+Go to -> edit object owbership -> ACL enable
+Now u can see for each object -> permission -> Edit is enabled
+Now you can edit and give permsiion to objects.
+But if deletion of object happens by mistake, u can retain it only if bucket versioning is enabled
+
+1. After bucket is created and files are uploaded, create an instance
+2. yum update -y
+Now we gotta install some plugins. 
+ yum install automake fuse fuse-devel gcc-c++ libcurl-devel libxml2-devel make openssl-devel
+yum install git
+git clone https://github.com/s3fs-fuse/s3fs-fuse.git
+now move to s3fs-fuse directory
+./autogen.sh
+./configure --prefix=/usr --with-openssl
+make
+make install
+which s3fs
+Package is installed, but s3 bucket and instance have different ip so how to access em
+AWS ->iam-> create user -> attach policies directly -> give full acess policy rights -> create user
+Go to security credential -> create access key -> CLI -> download csv
+Now go to cli
+touch /etc/passwd-s3fs
+vim /etc/passwd-s3fs-> give access-key:secret-key
+Now change permission of file -
+sudo chmod 640 /etc/passwd-s3fs
+Now mount
+s3fs arka-bucket1231 /mnt -o passwd_file=/etc/passwd-s3fs
+df -h -> s3fs
+Now goto mount directory 
+ cd /mnt/
+touch devops.txt{1..5}
+This will be reflected in bucket
+
+
+
+
+
+
+
+
+Creating a S3 bucket and access it from Amazon Linux instance (using AWS CLI)
+
+1. Create S3 bucket
+2. Create an amazon Linux instance
+yum install unzip -y
+rpmquery mount-s3 -> mount-s3 package not installed, so we gotta install that.
+yum install wget -y
+wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.rpm
+yum install ./mount-s3.rpm
+Now we need authentication for different services (EC2/local machine and S3 bucket ) to communiccate
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli2.zip"
+unzip awscli2.zip
+aws configure -> share access key and secret key from csv -> us-east-1 -> o/p= table
+sudo ./aws/install
+cd .aws
+cat config
+cat credentials
+Now we have to create a mountpoint, so we create a directory.
+mkdir /pooja
+mount-s3 arka-bucket1231 /pooja/
+Now to go ACL -> give read write permissions and authorize.
+cd pooja -> You can see your bucket files.
+
+
+S3 bucket access from windows instance
+
+1. Create t3.medium instance -> windows machine 2019 base 
+security group -> rdp protocol allowed for windows
+30 gb gp2.
+2. Download RDP file -> open -> connect -> Asking for password
+3. Get password in the instance only - upload password
+4. Go to server manager -> open -> local server -> ie  -> of of enhance
+5. Download WIndows Tnt drive -> install trial .
+6. Open tnt drive -> add new drive -> add -> any account name -> access key and password from csv file for authentication -> add new account -> save changes
+7. S3 bucket searched -> add new drive -> open it -> create new file -> got out files from s3 bucket.
+
+
+
+
+Static website hosting from s3 bucket
+
+1. open s3 bucket (empty objects).
+2. Add all files of any web project (html,css,js)
+3. Go to properties -> static web hosting -> edit -> enable ->host static website -> index.html
+4. Bucket website endpoint url -> click
+5. Permission -> ACL ->edit -> Read, write
+6. Seelct all objects -> Action -> make it public -> we got our website
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Creating a load balancer (Create 4 instances on different zones of same region, and while one server is down, other servers would work)
+
+1. Create 4 instances on diff zones.
+2. httpd server on all 4 serving index.html
+Firstly create target group -> instances -> register targets -> add all machines -> create target group (Ensure all machines are added to the target group)
+
+3. We have to create cross zone load balancer to ensure that if 1 zone gets down, not all can go down.
+4. For httpd server, we have to create application load balancer
+5. Now how would this load balancer distribute load in the network?? Lets see
+6. go to load balancer -> internet facing -> zone a,b,c because our servers in a,b,c -> security group 80 port allowed -> start and enable httpd in all 3 machines -> copy dns and paste
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Creating auto scaling
 
 
@@ -481,6 +623,7 @@ Google Privacy PolicyOpens in a new window
 Google Terms of ServiceOpens in a new window
 Your privacy & Gemini AppsOpens in a new window
 Gemini may display inaccurate info, including about people, so double-check its responses.
+
 
 
 
