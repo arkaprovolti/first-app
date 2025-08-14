@@ -491,6 +491,54 @@ Command to kill process -> kill <PID>
 
 
 
+Create VPC and then access EC2. 
+
+1. We have to follow the rule VISR
+	V -> VPC ->CIDR (19.0.0/60)
+	I -> IGW
+	S -> Subnet
+ 	R -> Route Table.
+2. For real life analogy, consider floors as subnets, building as VPC, and every room as EC2.
+	So, 1 subnet can have many EC2.
+3. We will create 2 subents - private and public. Private won't be exposed over internet, eg. Database. Public will be exposed over internet, eg. Web server, 	Mail server.
+4. Suppose, for 2 subnets we wanna create, we allot 250 IPS for one, and 150 IPS for the other. Now how will we subnet? For that we can use vlsm calculator.
+5. Now go to AWS -> Create VPC -> VPC only ->IPV4 CIDR -> put 10.0.0.0/16 -> no ipv6 cidr -> create
+Now we can see 2 VPCs. The first one is the default one and we don't have to mess with it.
+6. Now we have to create IGW (Internet gateway)
+7. We can already see one IGW. Now we gotta create one. Give name :arka-igw
+8. Now we gotta create subnet -> give arka-vpc -> give name public-subnet -> give zone 1a ->ipv4 vpc cidr block: 10.0.0.0/16 -> ipv4 subnet cidr block: 10.0.0.0/24 -> create subnet
+9. Again we create another subnet -> give name private-subnet -> we give zone 1b -> ipv4 vpc cidr block: 10.0.0.0/16 -> ipv4 subnet cidr block: 10.0.1.0/24 -> create subnet
+10. Now we gotta create EC2. 2 EC2s to create -> one for server and another for database, both instances should be in different zones.  For the server EC2, we gotta turn on httpd server.
+11. For instance 1-> give our vpc -> our public subnet -> disable auto assign public ip -> security group ->create security group new ->launch instance
+12. For instance 2-> same key as instance 1 -> disable auto assign public ip -> new security grp -> our private subnet -> 
+13. Now for instance 1, allow icmp -> 0.0.0./0 on its security group.
+Then we can see that for our server, the public ip is not visible. So we go to elastic ip
+allocate elastic ip -> for that elastic ip -> actions -> associate elastic ip -> give that instance
+
+14. Our IGW is not connected with VPC. So we gotta attach IGW with VPC.
+15. Now we gotta create Route table (Don't mess with default one) and attach with vpc
+16. Now edit routes ->add route 0.0.0.0/0 -> target: IGW
+17. Now route table needs to associate with subnet -> our created route-table -> edit subnet association -> select public subnet -> save associations
+18. The server instance should work .
+19. Now for instance 2(db), our private subnet -> allow icmp -> 0.0.0./0 on its security group,  disable auto assign public ip -> security group ->create security group new 
+20. Now NAT Gateway needed for db instance .
+21. Create NAT Gateway -> subnet- public ->connectivity type - public -> create
+22. Now gotta create another route table ->our vpc-> create -> edit route-> add route 0.0.0.0/0 -> target -NAT -> 
+Now for our created route table -> edit subnet association -> select private subnet -> save
+Now from our public server -> sudo su -
+vim key14auga.pem (from our public server)
+paste the full key
+ chmod 400  key14auga.pem
+Now try accessing the database server, it will run.
+ping google
+IT WORKS
+
+
+
+
+
+
+
 
 
 
