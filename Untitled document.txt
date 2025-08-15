@@ -191,6 +191,7 @@ Creating Volume in an instance
 5. Now how to access our new disk??
 6. lsblk -fs -> we can't see our 5 gb created volume.
 7. blkid -> This will show our UUID
+mkfs.ext4 /dev/xvdb
 8. mkdir /data
 9. mount /dev/xvdb /data
 df -h
@@ -536,6 +537,7 @@ IT WORKS
 
 
 H.W -North Virginia - Ohio data communication using VPC
+
 
 
 
