@@ -555,8 +555,9 @@ Now, before peering connection, go to both route tables (ohio virginia) and 0.0.
 Now peering connection in both ohio and virginia -> select my account and another region -> select ohio for virgina and ovirginia for ohio
 now accept peering from both ohio and virginia
 route table ->subnet association ->select public (Do for both ohio and virginia)
-
+Try launching instance at last
 After peering connection, in route table, give virginia-ip/16 for ohio and ohio-ip/16 for virginia
+
 
 
 
