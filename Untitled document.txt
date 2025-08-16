@@ -545,6 +545,20 @@ H.W -North Virginia - Ohio data communication using VPC
 
 
 
+Peering connection VPC between Ohio and North Virginia
+
+1. VISR (for Virginia) vpc- ipv4 10.0.0.0/16, public subnet- 10.0.0.0/24, private subnet - 10.0.1.0/24
+ 2. VISR (for Virginia) vpc- ipv4 20.0.0.0/16, public subnet- 20.0.0.0/24, private subnet - 20.0.1.0/24
+3. instance - auto assign ip enable -> subnet -public
+attach both igws (ohio and virgina) to vpc
+Now, before peering connection, go to both route tables (ohio virginia) and 0.0.0/0 and select igw.
+Now peering connection in both ohio and virginia -> select my account and another region -> select ohio for virgina and ovirginia for ohio
+now accept peering from both ohio and virginia
+route table ->subnet association ->select public (Do for both ohio and virginia)
+
+After peering connection, in route table, give virginia-ip/16 for ohio and ohio-ip/16 for virginia
+
+
 
 
 
