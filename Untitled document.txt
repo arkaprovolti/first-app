@@ -655,3 +655,80 @@ curl http://172.17.0.4  ->Failed to connect to 172.17.0.4 port 80 after 0 ms: Co
 
 
 
+
+
+
+
+
+Stopping the existing container - docker stop <container-name or id>
+Removing the container - docker rm <container-name or id>
+Run a new container with volume mounted at / : docker run -it --name webApp -v my-vol:/ ubuntu:rolling /bin/bash
+killing docker container: docker kill <container>
+removing container: docker rm <container>
+
+
+#We cannot directly modify the mount point of an existing container's volume while it is running or stopped,
+as Docker does not allow changing the mount configuration after creation
+
+
+
+Creating Docker Volume
+
+docker volume create myvol
+docker volume ls
+docker run -it --name mycontainer -v my-vol:/www/html ubuntu:rolling /bin/bash
+
+
+
+Docker volume on container (method 1)
+1. docker volume create myvol
+2. Access the volume using a temporary container: 
+docker run -it --rm -v myvol:/data ubuntu:rolling /bin/bash   -> -v myvol:/data mounts the myvol volume to /data inside the container.
+3.ls -l /data
+4.echo "test data"> /data/testfile.txt
+exit
+5. Inspect the volume location on the host (amazon instance)(read only access):
+	docker volume inspect myvol
+6. Look for Mountpoint field (/var/lib/docker/volumes/myvol/_data).
+7. Access it with root priviledges (read only)
+	sudo ls -l /var/lib/docker/volumes/myvol/_data
+	sudo cat /var/lib/docker/volumes/myvol/_data/testfile.txt
+
+
+
+
+Docker volume on container(method 2):
+
+1. Create files on machine : mkdir -p /home/user/my-files
+2. Add some files to it:
+	echo "File from machine 1"> /home/user/my-files/machone-file1.txt
+	echo "File from machine 2"> /home/user/my-files/machone-file2.txt
+3. Run a container with a bind mount
+	docker run -d --name myContainer -v /home/user/my-files:/data ubuntu:rolling -> Binds the host directory to /data in the container.
+4. Access the files in container and add files :
+	docker exec -it myContainer /bin/bash
+5. Create new files in /data
+	echo "File1 from container"> /home/user/my-files/container-file1.txt
+	echo "File2 from container"> /home/user/my-files/container-file2.txt
+6. Remove the container
+	docker stop file-test
+	docker rm file-test -> This deletes the container, but the bind-mounted data remains on the host (/home/user/my-files)
+7. Access the Volume data on the machine
+	ls -l /home/user/my-file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
