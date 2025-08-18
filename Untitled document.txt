@@ -564,6 +564,92 @@ After peering connection, in route table, give virginia-ip/16 for ohio and ohio-
 
 
 
+Installing docker
+
+	search docker install in rhel 8 in google
+
+
+yum repolist all
+sudo dnf -y install dnf-plugins-core
+ sudo dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+yum repolist all -> now we can see docker- docker ce
+sudo dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo dnf install docker-ce*
+yum install docker* -y
+rpmquery docker
+systemctl start docker
+systemctl enable docker
+docker info
+
+overlay2 -> storage driver
+/var/lib/docker -> docker root directory
+
+docker ps -> How many containers running
+docker ps -a
+docker image ls  -> how many images.
+	Now how to get the image? -> DockerHub. No registration needed to pull the image, but registration needed to push the docker image.
+	Now, suppose we wanna run ubuntu in container... Then we gotta pull docker image. repo -> collection of images
+	Get ubuntu image -> docker pull ubuntu:rolling
+	Get httpd image -> docker pull httpd:trixie
+	Get centos image -> docker pull centos:centos7.9.2009
+
+So, before deploying container, we get to install these images.
+docker image ls -> list of our 3 images installed
+docker --help
+
+docker run -it --name <container_name> <image_name> /bin/bash
+docker run -it --name arka-devops-container ubuntu:rolling /bin/bash
+
+docker ps -a
+
+apt update -y
+
+
+docker exec -it 8b8d54855d19 /bin/bash -> get into running docker container (ours is ubuntu container)
+apt update -y
+apt install apache2 -y
+cd /var/www/html
+ echo "This is my application one">index.html
+systemctl apache2 start -> won't work in our running container
+service apache2 start
+curl http://localhost -> won't work in our runnin container
+apt install curl -> curl is a command line browser
+cd
+mkdir data
+cd data
+touch arka.txt{1..10}
+exit -> we exited from our container arka-devops-container
+docker inspect arka-devops-container | less
+ip a s
+Now we gonna run another container.....
+docker image ls -> ubuntu, httpd, centos
+
+docker run -it --name arka-devops-container2 ubuntu:rolling /bin/bash 
+apt update -y
+apt install apache2 -y
+cd /var/www/html
+cat index.html
+service apache2 start
+Ctrl P + Ctrl Q -> container exit
+After container exit, curl http://172.17.0.2 -> This is my application one
+
+docker attach arka-devops-container2 -> get into running docker container
+
+Docker works on port forwarding
+
+Ok, now we want my containers to run on a different port.
+
+
+
+docker run -it --name arka-devops-container3 -p 8080:80 ubuntu:rolling /bin/bash --> 8080:80: Maps port 8080 on 	your host to port 80 inside the container.
+apt update -y
+apt install apache2 -y
+
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' arka-devops-container2 -> check ip 	address of this docker container
+curl http://172.17.0.3   -> This is my application 2
+
+curl http://172.17.0.4  ->Failed to connect to 172.17.0.4 port 80 after 0 ms: Could not connect to server
+			For this port 80, we have to mention port 8080 in the security group
 
 
 
