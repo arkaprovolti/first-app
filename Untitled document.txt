@@ -725,6 +725,86 @@ Docker volume on container(method 2):
 
 
 
+Configuring KOPS: (details is on Sanjaya sir's repo)
+
+create instance ubuntu 2nd in the list t2.medium 10gb
+apt update -y
+install AWSCLI -> 
+apt install unzip -y
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+Install kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+kubectl version --client
+
+
+INstall kops
+curl -Lo kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
+chmod +x ./kops
+sudo mv ./kops /usr/local/bin/
+
+
+Create an IAM user firstly with AdministratorAccess, Route53full, EC2full, IAMfull and S3full full access -> arka-kops-2
+Now create access key -> CLI -> 
+Now gotta create role-> Now we create role, after user -> aws service -> ec2 -> Route53full, EC2full, IAMfull and S3full full access -> role name : arka2-kops-role-2 -> go to instance and modify iam role
+
+Now, aws configure
+
+Now, Install kops on ubuntu instance:
+ curl -LO https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
+
+ chmod +x kops-linux-amd64
+ sudo mv kops-linux-amd64 /usr/local/bin/kops
+kops version 
+
+Create a Route53 private hosted zone (you can create Public hosted zone if you have a domain) ->
+Route 53 ->Hosted zones -> create hosted zones -> now while giving name give it in Sanjaya sir's format to be on the safe side -> name: k8s.arka-2-melo.in -> private hosted zone ->
+
+create an S3 bucket: (To be on safe side, give name like Sanjaya Sir's one (dev.k8....)(Give dns name same as bucket)
+aws s3 mb s3://dev.k8s.arka-2-melo.in -> make_bucket: dev.k8s.arka-2-melo.in
+
+To Check Bucket: aws s3 ls
+
+
+Expose environment variable:
+
+ export KOPS_STATE_STORE=s3://dev.k8s.arka-2-melo.in
+Create sshkeys before creating cluster
+
+ ssh-keygen
+
+Create kubernetes cluster definitions on S3 bucket: 
+
+kops create cluster --cloud=aws --zones=us-east-1a --name=dev.k8s.arka-2-melo.in --dns-zone=k8s.arka-2-melo.in --dns private
+
+Create kubernetes cluser
+
+  kops update cluster dev.k8s.arka-2-melo.in --yes --admin
+
+
+Now worker node and master node will be created in instance, wait for 10 mins, they will be ready.
+
+To list nodes
+	kubectl get nodes 
+
+Validate your cluster
+	kops validate cluster
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
