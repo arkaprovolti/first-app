@@ -802,7 +802,10 @@ Validate your cluster
 
 
 
-Kubernetes cluster configuration in master, worker1 and worker 2
+Kubernetes cluster configuration in master, worker1 and worker 2 (Sanjaya-K8S-Code
+/k8s-installtion-with-containerd-on-ubuntu 24.04)
+
+
 
 1. ICMP allowed in all 3, with separate for master.
 2. t2.medium for master while t2.micro for workers.
@@ -829,6 +832,7 @@ kubeadm join 172.31.31.6:6443 --token mf0okw.911w0h06l3gffq1a \
 
 	for workers:
 	https://kubernetes.io/docs/reference/networking/ports-and-protocols/
+
 
 
 
