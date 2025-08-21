@@ -802,6 +802,35 @@ Validate your cluster
 
 
 
+Kubernetes cluster configuration in master, worker1 and worker 2
+
+1. ICMP allowed in all 3, with separate for master.
+2. t2.medium for master while t2.micro for workers.
+3. ip a s -> note down ip address of all 3 machines and at vim.etc/hosts, paste 3 ip with names at all 3.	
+	172.31.22.148   master
+	172.31.20.241   worker1
+	172.31.26.74    worker2
+4. try pinging from all 3 to all 3.
+5. Now try sir's GitHub repo: k8s-installtion-with-containerd-on-ubuntu 24.04
+for master:
+	run codes till  sudo chown.
+In this command -> vim /etc/containerd/config.toml-> line 139 (:se nu) -> make it true
+6. for workers:
+	run codes till sudo systemctl enable --now kubelet..
+	dont run kubeadm pull and init.
+7. then in workers run: 
+kubeadm join 172.31.31.6:6443 --token mf0okw.911w0h06l3gffq1a \
+        --discovery-token-ca-cert-hash sha256:815d91ea8044ddc548deb6ef3a5890f2ff965b78db4322aaab4de9435a44f89c
+
+8. Then allow ports: 
+	port 6443 should be allowed
+	for master:
+	https://kubernetes.io/docs/reference/networking/ports-and-protocols/
+
+	for workers:
+	https://kubernetes.io/docs/reference/networking/ports-and-protocols/
+
+
 
 
 
