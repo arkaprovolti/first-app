@@ -839,6 +839,100 @@ kubeadm join 172.31.31.6:6443 --token mf0okw.911w0h06l3gffq1a \
 
 
 
+For ubuntu, the worker node setup is same asa given before, foor redhat9, try following the Sanjaya-K8S-Code
+/Host K8S cluster using Docker with RHEL-9, documentation, gotta install some packages if some not working, also firewalld gotta install and enable, and exclude the kubelet command in the ery last for it to work.
+
+But still, that node won't be ready and for that we have to follow these steps to make it ready in that worker node:
+
+sudo mkdir -p /run/systemd/resolve
+sudo ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
+ls -l /run/systemd/resolve/resolv.conf
+sudo systemctl restart kubelet
+
+
+
+
+
+
+Kubernetes replicaset
+
+1. After cluster is setup, with 3 ubuntu , and one redhat 9, run these.
+2. kubectl get pod -> No resources found in namespace
+3. kubectl get pod --all-namespaces -> all pods.
+4. kubectl get namespaces -> all namespaces
+5. system pods -> kubectl get pod -n kube-system
+6. 
+kubectl get nodes 
+
+Creating a Pod with Apache in the default namespace
+vim apache-pod-default.yaml
+1. Create a yaml file named apache-pod-default.yaml to define the pod.
+apiVersion: v1
+kind: Pod                                                                                                                            metadata:                                                                                                                              name: apache-pod                                                                                                                     namespace: default                                                                                                                 spec:                                                                                                                                  containers:
+  - name: apache-container                                                                                                               image: httpd-latest                                                                                                                  ports:                                                                                                                               - containerPort: 80   
+
+In the above Yaml file, a pod named apache-pod in the default namespace, running an Apache container using the httpd:latest image, exposing port 80.
+
+Create the pod > kubectl apply -f apache-pod-default.yaml
+
+pod/apache-pod created
+
+kubectl get pod -n default -> Pods in the default namespace
+
+Creating a pod with apache image in the Arka Namespace:
+	kubectl create namespace arka
+	kubectl get namespaces
+	Create a yaml file apache-pod-default.yaml in Arka Namespace.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: apache-pod
+  namespace: default
+spec:
+  containers:
+  - name: apache-container
+    image: httpd-latest
+    ports:
+    - containerPort: 80
+
+
+Apply -> kubectl apply -f apache-pod-default.yaml 
+
+kubectl get pod -n arka -> pods in arka namespace
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ansible setup 3 machines
+
+1. Password set in all - passwd root
+Follow 2 and 3 in all machine
+2. vim /etc/ssh/sshd_config -> password authentication, rootpermitlogin -> yes
+3. systemctl restart sshd ->  systemctl enable sshd
+4. generate ssh key in master - ssh-keygen
+5. In  master -> ssh-copy-id root@<ip of  machine1>
+ssh-copy-id root@<ip of  machine2>
+in master -> scp /etc/hosts root@<ip of machine1>:/etc/hosts
+scp /etc/hosts root@<ip of machine2>:/etc/hosts
+now check in vim etc/hosts in workers
+6. now we write in master vim /etc/hosts all ips with names, then scp .... in both machines, then check in both machines vim /etc/hosts -> They are all copied :)
+7. NNOW WE GONNA DOWNLOAD ANSIBLE
+8. yum install ansible -y
+
+
+
 
 
 
