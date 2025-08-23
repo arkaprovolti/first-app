@@ -833,6 +833,13 @@ kubeadm join 172.31.31.6:6443 --token mf0okw.911w0h06l3gffq1a \
 	for workers:
 	https://kubernetes.io/docs/reference/networking/ports-and-protocols/
 
+Then:
+Configure Pod Network
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/calico.yaml -O
+
+kubectl apply -f calico.yaml
+
+
 
 
 
@@ -930,6 +937,7 @@ now check in vim etc/hosts in workers
 6. now we write in master vim /etc/hosts all ips with names, then scp .... in both machines, then check in both machines vim /etc/hosts -> They are all copied :)
 7. NNOW WE GONNA DOWNLOAD ANSIBLE
 8. yum install ansible -y
+
 
 
 
