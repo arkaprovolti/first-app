@@ -964,6 +964,48 @@ went to virtual machine azure native cli -> gave ssh key copy location -> got ou
 
 
 
+Ansible mechanism:
+
+in confg file in ansible -> [defaults] host_key_checking = False -> because mine not working
+1. ansible all -m user -a "name=Arka uid=1100 home=/devops state=present"  -> This will make devops directory in both worker machines, and Arka user will be created in both machines -> can be verified by cat etc/passwd
+
+2. cat /etc/passwd | grep -i Arka -> run in both hosts ->  To see if the user "Arka" was created on both machines
+
+3.  Now we gonna do industry way
+
+3. go to etc/ansible folder, and then create yaml file -> my-first-playbook.yaml
+
+---
+- name: Installing apache and running
+  hosts: all
+
+  tasks:
+          - name: creating user Jack Sparrow
+            user:
+                    name: ArkaBoss
+                    uid: 1200
+                    home: /ltimindtree
+                    shell: /bin/bash
+                    state: present
+
+          - name: Installed Apache on my remote server
+            yum:
+                    name: httpd
+                    state: present
+
+          - name: started apache service
+            systemd:
+                     name: httpd
+                     state: started
+                     enabled: true
+
+
+
+For checking syntax error -> ansible-playbook my-firstplaybook.yaml --syntax-check
+For dry run -> ansible-playbook my-firstplaybook.yaml -C 
+For actual run -> ansible-playbook my-firstplaybook.yaml
+
+
 
 
 
