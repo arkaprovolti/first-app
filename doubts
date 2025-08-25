@@ -1,3 +1,9 @@
 ansible all -m user -a "name=Arka uid=1100 home=/devops state=present"
 
 ansible all -m user -a "name=johndoe state=present"
+
+[DEPRECATION WARNING]: Ansible will require Python 3.8 or newer on the controller starting with Ansible 2.12. Current version: 3.6.8
+ (default, Sep 10 2021, 09:13:53) [GCC 8.5.0 20210514 (Red Hat 8.5.0-3)]. This feature will be removed from ansible-core in version
+2.12. Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
