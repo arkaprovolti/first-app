@@ -1008,4 +1008,5 @@ For actual run -> ansible-playbook my-firstplaybook.yaml
 
 
 
+H.W -> EC2 provisioning via ansible
 
