@@ -18,3 +18,47 @@ ansible all -m user -a "name=johndoe state=present"
 [WARNING]: No inventory was parsed, only implicit localhost is available
 [WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
 [root@control ~]#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[dev-server]
+worker1
+
+[prod-server]
+worker2
+
+The authenticity of host 'worker1 (10.0.0.5)' can't be established.
+ECDSA key fingerprint is SHA256:yYzqGC51eMTNf1Hohf+q03YaPrIqoHShiWiHOO3fZV4.
+The authenticity of host 'worker2 (10.0.0.6)' can't be established.?
+ECDSA key fingerprint is SHA256:XjsXP0yODKZgkHQQoLATYaAiWywSuXeQ9jMWQgOpcWI.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Please type 'yes', 'no' or the fingerprint: yes
+Please type 'yes', 'no' or the fingerprint: yes
+worker1 | FAILED! => {
+    "changed": false,
+    "module_stderr": "Shared connection to worker1 closed.\r\n",
+    "module_stdout": "/bin/sh: /usr/bin/python3.8: No such file or directory\r\n",
+    "msg": "The module failed to execute correctly, you probably need to set the interpreter.\nSee stdout/stderr for the exact error",
+    "rc": 127
+}
+yes
+worker2 | FAILED! => {
+    "changed": false,
+    "module_stderr": "Shared connection to worker2 closed.\r\n",
+    "module_stdout": "/bin/sh: /usr/bin/python3.8: No such file or directory\r\n",
+    "msg": "The module failed to execute correctly, you probably need to set the interpreter.\nSee stdout/stderr for the exact error",
+    "rc": 127
+}
