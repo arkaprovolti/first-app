@@ -1,1 +1,3 @@
 ansible all -m user -a "name=Arka uid=1100 home=/devops state=present"
+
+ansible all -m user -a "name=johndoe state=present"
