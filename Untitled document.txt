@@ -938,6 +938,9 @@ now check in vim etc/hosts in workers
 6. now we write in master vim /etc/hosts all ips with names, then scp .... in both machines, then check in both machines vim /etc/hosts -> They are all copied :)
 7. NNOW WE GONNA DOWNLOAD ANSIBLE
 8. yum install ansible -y
+9. check in controller machine in etc/ directory if ansible directory is present or not, if not then make one ansible directory.
+10. copy ansible.cfg file from sanjaya sir's github repo ansible-code/ansible.cfg -> vim /etc/ansible/ansible.cfg.
+
 
 
 
@@ -950,6 +953,7 @@ Azure setup
 5. Now fro same ssh key7, create 3 machines
 6. Our office network blocked it, so used phone hotspot instead.
 went to virtual machine azure native cli -> gave ssh key copy location -> got our ssh key authentication -> pasted in command prompt.
+
 
 
 
