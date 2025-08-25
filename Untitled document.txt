@@ -942,6 +942,16 @@ now check in vim etc/hosts in workers
 
 
 
+Azure setup
+1. Search resource groups
+2. Create resource groip
+3. Now create virtual network -> give previously created resource group
+4. Now create virtual machine -> security standard -> subnet -> india-vnet (not india-rg)
+5. Now fro same ssh key7, create 3 machines
+6. Our office network blocked it, so used phone hotspot instead.
+went to virtual machine azure native cli -> gave ssh key copy location -> got our ssh key authentication -> pasted in command prompt.
+
+
 
 
 
