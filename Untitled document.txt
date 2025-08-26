@@ -1042,3 +1042,15 @@ chmod 400 26augkeya.pem -> for server 2 to access server 1
 start the server 2 in server 1 -> ssh -i 26augkeya.pem arka@20.0.2.4
 
 
+
+
+
+Peering connection b/w tow machines different regions in Azure:
+
+1. Create resource group, vnet (10.0.0.1), nsg in region 1 (US east) (subnet no need to create can use default if cidr is same as vnet), then launch machine in that vnet and region.
+2. Create resource group, vnet (20.0.0.1), nsg in region 2 (US west) (subnet no need to create can use default if cidr is same as vnet), then launch machine in that vnet and region.
+3. Now make peering connection in vnet1 -> settings -> peering ->add ->select vnet2 
+4. Check in vnet2 if peering connection made or not.
+Update both nsg rules with icmp.
+ping public ip from machine 1 to check connection
+
