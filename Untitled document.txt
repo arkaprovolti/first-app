@@ -1010,3 +1010,35 @@ For actual run -> ansible-playbook my-firstplaybook.yaml
 
 H.W -> EC2 provisioning via ansible
 
+
+
+
+
+
+
+
+
+
+
+Azure V-net, subnet, resource group and vm setup
+
+1. Create resource grp firstly - lalaland-rg
+2. Create v-net ->name=vnet1
+3. go to vnet1 -> create subnet -> public subnet -> 20.1.0/24, pvt subnet -> 20.0.2.0 -> Enable private subnet (no default outbound access)
+4. Create nsg -> lalaland-nsg
+create virtual machine ->server1(public subnet) ->us east ->ssh -> standard security type -> centos -> 
+networking ->subnet-public subnet, public ip-new, nic security group - advanced ->     -> select public subnet-> public inbound ports - none -> select our nsg in configure nsg ->
+
+create virtual machine ->server2(private subnet) ->us east ->ssh -> standard security type -> centos -> 
+networking ->subnet-public subnet, public ip-new, nic security group - advanced ->     -> select public subnet-> public inbound ports - none -> select our nsg in configure nsg ->
+
+Go to seever1(public) ->networking ->  network settings -> add inbound rules ->  SSH .
+
+In our public server, we have to launch our private server because there is no network in private server (because we turned off the public ip to none).
+
+Now in server1, set password: passwd root -> 
+vim 26augkeya.pem -> paste the downloaded key
+chmod 400 26augkeya.pem -> for server 2 to access server 1
+start the server 2 in server 1 -> ssh -i 26augkeya.pem arka@20.0.2.4
+
+
