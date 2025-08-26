@@ -1054,3 +1054,39 @@ Peering connection b/w tow machines different regions in Azure:
 Update both nsg rules with icmp.
 ping public ip from machine 1 to check connection
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Load Balancer in Azure
+
+1. Create 1 vnet attached with a resource group Create 3 instances with httpd installed and for each nsg instance allow port 80.
+2. Run index.html on all 3 machines on port 80
+3. Search load balancer -> create lb -> standard lb -> public -> regional -> frontend pool- create pool, create ip -> backend pool (later) ->inbound rules (later) ->  create load balancer
+4. Now after load balancer is created, inside our load balancer ->settings -> backend pool -> add -> select our vnet -> NIC -> in ip configuration - add all 3 machines
+5. Now go to our load-balancer -> health probe -> add (TCP, 80) ->
+6. Now our load balancer -> add load balancing rules -> give front end ip, backend pool, port = 80, backend port=80,
+give health probe -> save
+7. Now in our load balancer -> frontend ip configuration ->copy ip:80
+
+Our load balancer is made.
+
+Now,if we wanna access all 3 machines using 1 ip, then-
+delete public ip from all 3 machines, Go to your load balancer -> inbound NAT Rules -> VM -> ipconfig -> frontend port:22, SSH, backendport=2222, TCP, Now can be accessed using load balancer's IP
+
+
