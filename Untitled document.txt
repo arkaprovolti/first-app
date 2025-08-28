@@ -1090,3 +1090,29 @@ Now,if we wanna access all 3 machines using 1 ip, then-
 delete public ip from all 3 machines, Go to your load balancer -> inbound NAT Rules -> VM -> ipconfig -> frontend port:22, SSH, backendport=2222, TCP, Now can be accessed using load balancer's IP
 
 
+
+
+
+
+
+Now i have my maven project launched on tomcat. Now gotta configure docker and Kubernetes eks on different machines
+
+1. Launch a machine for docker
+2. sudo dnf -y install dnf-plugins-core
+sudo dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+sudo dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+yum install docker* -y
+rpmquery docker
+systemctl start docker
+systemctl enable docker
+docker info
+Now in Jenkins dashboard -> plugins -> publish over SSH -> restart Jenkins
+In docker, Password set  - passwd root
+Now go to docker -> vim /etc/ssh/sshd_config  ->permitrootlogion- yes , passwordbasedauthentication - yes
+systemctl restart sshd
+Now in Jenkins -> ssh root@<docker ip>
+Now after login docker in Jenkins, vim /etc/ssh/sshd_config  ->permitrootlogion- yes , passwordbasedauthentication -yes -> systemctl restart sshd
+
+Now go to Jenkins dashboard -> our pipeline -> configure -> Add post build action ->Send build artifacts over SSH -> (leave it for now, we will see it later) -> source files -> **/*
+
+Now go to system -> publish over SSH -> add SSH server -> name- Jenkins -> hostname - Jenkins ip ->username- root -> 
