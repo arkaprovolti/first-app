@@ -1095,7 +1095,7 @@ delete public ip from all 3 machines, Go to your load balancer -> inbound NAT Ru
 
 
 
-Now i have my maven project launched on tomcat. Now gotta configure docker and Kubernetes eks on different machines
+Now i have my maven project launched on tomcat. Now gotta configure docker and Jenkins on different machines
 
 1. Launch a machine for docker
 2. sudo dnf -y install dnf-plugins-core
@@ -1107,12 +1107,32 @@ systemctl start docker
 systemctl enable docker
 docker info
 Now in Jenkins dashboard -> plugins -> publish over SSH -> restart Jenkins
-In docker, Password set  - passwd root
+In docker, Jenkins - Password set  - passwd root
 Now go to docker -> vim /etc/ssh/sshd_config  ->permitrootlogion- yes , passwordbasedauthentication - yes
 systemctl restart sshd
+Now go to jenkins -> vim /etc/ssh/sshd_config  ->permitrootlogion- yes , passwordbasedauthentication - yes
+systemctl restart sshd
+sshd-keygen in both
+Then copy id of both into each other.
 Now in Jenkins -> ssh root@<docker ip>
 Now after login docker in Jenkins, vim /etc/ssh/sshd_config  ->permitrootlogion- yes , passwordbasedauthentication -yes -> systemctl restart sshd
 
 Now go to Jenkins dashboard -> our pipeline -> configure -> Add post build action ->Send build artifacts over SSH -> (leave it for now, we will see it later) -> source files -> **/*
 
-Now go to system -> publish over SSH -> add SSH server -> name- Jenkins -> hostname - Jenkins ip ->username- root -> 
+Now go to system -> publish over SSH -> add SSH server -> name- docker -> hostname - docker ip (public)->username- root ->  give machine username
+add SSH server -> name- Jenkins -> hostname - Jenkins ip (public)->username- root ->  give machine username
+
+Now ECR ->create
+Now create IAM User -> awsconfigure
+Now postr build actions ->send artifacts over ssh -> select Jenkins -> source - / -> exec command -> rsync -avh /var/lib/jenkins/workspace/production-pipeline/* root@172.31.37.151:/opt
+
+Now postr build actions ->send artifacts over ssh -> select docker (we created) -> source - **/*, 
+exec command -> cd /opt
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 756842284117.dkr.ecr.us-east-1.amazonaws.com
+docker build -t my-ecr-29aug .
+docker tag my-ecr-29aug:latest 756842284117.dkr.ecr.us-east-1.amazonaws.com/my-ecr-29aug:latest
+docker push 756842284117.dkr.ecr.us-east-1.amazonaws.com/my-ecr-29aug:latest
+
+Build in Jenkins
+
+check opt directory in docker -> files should come.
