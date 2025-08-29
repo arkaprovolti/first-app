@@ -1136,3 +1136,52 @@ docker push 756842284117.dkr.ecr.us-east-1.amazonaws.com/my-ecr-29aug:latest
 Build in Jenkins
 
 check opt directory in docker -> files should come.
+
+
+Now eks-clustering
+create role ->iamfullaccess , elasticcontainerregistry, eksclusterpolicy
+Modify eks instance in settings -> modify iam role
+yum update -y
+yum install unzip -y
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+-------------------------------------------
+eksctl create cluster --name my-cluster --region us-east-1 --version 1.32 --vpc-public-subnets subnet-0fe75bce722a75495,subnet-0485cd30ed80faa5c --without-nodegroup
+
+Now creating nodegroup (make sure of region and subnet id)
+
+ eksctl create nodegroup \
+  --cluster my-cluster \
+  --region us-east-1 \
+  --name my-node-group \
+  --node-ami-family Ubuntu2204 \
+  --node-type t2.small \
+  --subnet-ids subnet-0fe75bce722a75495,subnet-0485cd30ed80faa5c \
+  --nodes 3 \
+  --nodes-min 2 \
+  --nodes-max 4 \
+  --ssh-access \
+  --ssh-public-key /root/.ssh/id_rsa.pub
+
+Now set password -> passwd root
+vim /etc/ssh/sshd_config -> password authentication, rootpermitlogin -> yes
+systemctl restart sshd
+systemctl enable sshd
+
+Now go to Jenkins -> manage -> system -> add ssh server -> eks node -> hostname - pvt ip -> username - root -> give password -> test -> apply
+
+Now Jenkins ->pipeline -> configure -> eks -> source- / -> exec -> (Run later)
+Go to Docker -> cd /opt/ -> regapp.deploy.yaml and regapp.service.yaml
+Copy contents of both file.
+Go to eks node -> vim regapp.deploy.yaml and regapp.deploy.yaml -> paste both
+in docker -> ssh-copy-id-root@<eks-ip> and in Kubernetes ->ssh-copy-id-root@<Jenkins ip> 
+
+Now go to ecr -> image -> copy url -> paste in eks machine -> regapp.deploy.yaml -> paste in image : url.
+Now Jenkins ->pipeline -> configure -> eks -> source- / -> exec -> kubectl apply -f regapp.deploy.yaml
+kubectl apply -f regapp.service.yaml
+
+Now build ->
+in eks -> kubectl get pod
+kubectl get svc -> copy link
+
