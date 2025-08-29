@@ -1185,3 +1185,13 @@ Now build ->
 in eks -> kubectl get pod
 kubectl get svc -> copy link
 
+
+We had some error in the dockerfile in project repo, so it failed. So we copied the dockerfile from sir's repo, deleted ecr image, and tried some commits in index.jsp file, the image will be created automatically, and then copy image url in our eks's regapp-deploy.yml file -> then in pipeline configure -> eks -> exec commands-> 
+kubectl delete -f regapp-deploy.yml
+kubectl apply -f regapp-deploy.yml
+kubectl apply -f regapp-sevice.yml
+
+Now build -> copy-link:8080/webapp/ -> our app
+
+Now can commit and will be deployed automatically.
+
