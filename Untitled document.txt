@@ -1195,3 +1195,80 @@ Now build -> copy-link:8080/webapp/ -> our app
 
 Now can commit and will be deployed automatically.
 
+
+
+
+
+
+
+
+
+Azure setup Tomcat
+1. make Kubernetes cluster from cluster se4rvice (make sure to make node pools)
+2. make a vm
+3. azure cli
+sudo apt-get update
+sudo apt-get install apt-transport-https ca-certificates curl gnupg lsb-release
+
+# Add Microsoft's signing key
+sudo mkdir -p /etc/apt/keyrings
+curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
+
+# Add the Azure CLI repository
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
+
+# Install Azure CLI
+sudo apt-get update
+sudo apt-get install azure-cli
+
+4. az --version
+5. az aks install-cli
+kubectl version --client
+az login
+az aks get-credentials --resource-group new-rg --name new-cluster-2sep
+### Step 5: Write the Deployment YAML File for Tomcat
+Create a file named `deployment.yaml` using a text editor (e.g., nano or vim):
+
+
+Apply the service:
+```
+kubectl apply -f service.yaml
+```
+
+Verify the deployment:
+```
+kubectl get deployments
+```
+It should show `tomcat-deployment` with 1/1 ready replicas.
+
+Verify pods:
+```
+kubectl get pods
+```
+Wait for the pod to reach "Running" status (may take a minute).
+
+### Step 8: Get the Service Details and External URL
+Watch for the external IP assignment (AKS LoadBalancer services provision a public IP):
+```
+kubectl get svc tomcat-service -w
+```
+
+This will output something like:
+```
+NAME             TYPE           CLUSTER-IP     EXTERNAL-IP    PORT(S)        AGE
+tomcat-service   LoadBalancer   10.0.123.45    <pending>      80:31234/TCP   1m
+```
+Wait until `EXTERNAL-IP` changes from `<pending>` to an actual IP address (e.g., `20.123.45.67`). Press Ctrl+C to stop watching once it's ready.
+
+### Step 9: Access the Tomcat Server URL
+Once the external IP is available, open a web browser (on your VM or elsewhere) and navigate to:
+```
+http://<external-ip>
+```
+Replace `<external-ip>` with the IP from Step 8. This should load the default Apache Tomcat welcome page.
+
+
+Make sure to include port 8080
+
+
+
