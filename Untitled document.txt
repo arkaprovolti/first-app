@@ -1272,3 +1272,50 @@ Make sure to include port 8080
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+Terraform configure in aws
+
+1. create a ec2 instance named terra-server.
+2. create iam user - adminaccess
+3. aws configure
+install terraform - https://developer.hashicorp.com/terraform/install
+sudo yum install -y yum-utils shadow-utils
+sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+sudo yum -y install terraform
+
+Now go to -> https://registry.terraform.io/providers/hashicorp/aws/latest/docs -> Authentication and Configuration 
+create vim provider.tf in directory and paste:
+provider "aws" {
+  region     = "us-west-2"
+  access_key = "my-access-key"
+  secret_key = "my-secret-key"
+}
+
+Now go to (ec2 instance registry terraform -> https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance 
+in vim provider.tf paste:
+resource "aws_instance" "example" {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = "t3.micro"
+
+  tags = {
+    Name = "HelloWorld"
+  }
+}
+
+Now in place of ami paste aws ami catalog and copy id (till 64 bit) and paste
+terraform validate
+terraform init
+terraform fmt
+terraform plan
+terraform apply
+
