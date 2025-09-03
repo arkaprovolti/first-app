@@ -1,1 +1,30 @@
-ansible all -m user -a "name=Arka uid=1100 home=/devops state=present"
+ Error: Unsupported block type
+│
+│   on ec2-with-existing-sg.tf line 25:
+│   25: root_block_device {
+│
+│ Blocks of type "root_block_device" are not expected here.
+╵
+╷
+│ Error: Unsupported block type
+│
+│   on ec2-with-existing-sg.tf line 32:
+│   32: ebs_block_device {
+│
+│ Blocks of type "ebs_block_device" are not expected here.
+╵
+╷
+│ Error: Unsupported argument
+│
+│   on ec2-with-existing-sg.tf line 39:
+│   39: user_data = <<-EOF
+│
+│ An argument named "user_data" is not expected here.
+╵
+╷
+│ Error: Unsupported argument
+│
+│   on ec2-with-existing-sg.tf line 47:
+│   47: tags = {
+│
+│ An argument named "tags" is not expected here.
