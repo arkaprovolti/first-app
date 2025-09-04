@@ -62,3 +62,23 @@ worker2 | FAILED! => {
     "msg": "The module failed to execute correctly, you probably need to set the interpreter.\nSee stdout/stderr for the exact error",
     "rc": 127
 }
+
+
+
+
+
+
+ Error: Reference to undeclared resource
+│
+│   on provider.tf line 36, in resource "aws_instance" "my_instance":
+│   36:   key_name        = aws_key_pair.my_key_pair.key_name # Associate the key pair
+│
+│ A managed resource "aws_key_pair" "my_key_pair" has not been declared in the root module.
+╵
+╷
+│ Error: Reference to undeclared resource
+│
+│   on provider.tf line 49, in output "key_pair_name":
+│   49:   value = aws_key_pair.my_key_pair.key_name
+│
+│ A managed resource "aws_key_pair" "my_key_pair" has not been declared in the root module.
