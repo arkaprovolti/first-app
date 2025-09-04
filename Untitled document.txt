@@ -1481,3 +1481,19 @@ output "key_pair_name" {
 output "private_key_path" {
   value = local_file.private_key.filename
 }
+
+
+
+
+
+
+
+
+
+
+
+Creating a custom VPC with terraform
+
+Creating users in IAM using terraform
+
+Creating variable VPC in teraform
