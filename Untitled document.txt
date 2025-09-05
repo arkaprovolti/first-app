@@ -1497,3 +1497,34 @@ Creating a custom VPC with terraform
 Creating users in IAM using terraform
 
 Creating variable VPC in teraform
+
+
+
+
+
+
+
+
+
+
+Nginx image on k8s cluster and it should be available on port 80
+
+1. subnet-068c6ca919d094394
+subnet-0b33844693b77ca44
+
+After eks cluster setup in ec2 instance,
+Make a dir -> vim pypod.yaml
+
+apiVersion: v1
+kind: Pod                                                                                                                            metadata:                                                                                                                              name: nginx                                                                                                                          labels:
+    app: nginx                                                                                                                       spec:                                                                                                                                  containers:
+  - name: nginx                                                                                                                          image: nginx:1.14.2
+    ports:                                                                                                                               - containerPort: 80 
+
+
+kubectl apply -f mypod.yaml
+kubectl expose pod nginx --type=LoadBalancer --port=80
+kubectl get svc
+kubectl get pods
+
+
