@@ -1000,6 +1000,16 @@ in confg file in ansible -> [defaults] host_key_checking = False -> because mine
                      enabled: true
 
 
+If we just wanted to configure a simple apache server:
+---
+- name: Installing apache and running                                                                                                  hosts: all                                                                                                                                                                                                                                                                tasks:
+          - name: configure a simple apache server                                                                                               yum:                                                                                                                                         name: install httpd
+                    state: present                                                                                                                                                                                                                                                  - name: Started Apache on my remote server
+            service:                                                                                                                                     name: httpd
+                    state: started                                                                                                                       enabled: true                                                                                                                                                                                                                                                   - name: create index.html file
+            copy:                                                                                                                                         content: "Simple Apache Server."
+                     dest: /var/www/html/index.html
+
 
 For checking syntax error -> ansible-playbook my-firstplaybook.yaml --syntax-check
 For dry run -> ansible-playbook my-firstplaybook.yaml -C 
@@ -1526,5 +1536,6 @@ kubectl apply -f mypod.yaml
 kubectl expose pod nginx --type=LoadBalancer --port=80
 kubectl get svc
 kubectl get pods
+
 
 
