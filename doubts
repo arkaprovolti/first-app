@@ -40,3 +40,34 @@ fatal: [worker1]: FAILED! => {"changed": false, "msg": "It appears that a space 
             copy:
                      content: "Simple Apache Server."
                      dest: /var/www/html/index.html
+
+
+
+
+
+
+
+
+
+
+
+
+---
+- name: Installing apache and running
+  hosts: all
+  tasks:
+    - name: configure a simple apache server
+      yum:
+        name: httpd
+        state: present
+
+    - name: Started Apache on my remote server
+      service:
+        name: httpd
+        state: started
+        enabled: true
+
+    - name: create index.html file
+      copy:
+        content: "Simple Apache Server."
+        dest: /var/www/html/index.html
