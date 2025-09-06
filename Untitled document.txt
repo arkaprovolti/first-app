@@ -1649,3 +1649,11 @@ Make 2 buckets each in North Virginia and Ohio. Make sure enabling aws versionin
 Upload some objects on both buckets.
 Now take one bucket -> Management -> Replication Rules -> Destination -> if u r in North Virginia, select Ohio ->Yes -> 
 Now see bucket in ohio one
+
+
+
+
+
+S3 bucket lifecycle configuration
+Get into any bucket -> management -> Create lifecycle rule ->apply for all -> Lifecycle rule actions: Transition current versions of objects between storage classes ->day30 -standard 1a -> day 60 - intelligent tiering -> Day 90 One zone 1A -> Day 180 - Glacier flexible retrieval
+
