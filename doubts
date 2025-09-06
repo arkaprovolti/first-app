@@ -63,3 +63,6 @@ When i run object url from bucket properties, its giving 404 not found, pls help
 
 
 create index.html in repo
+
+
+http://arka-github-actions-bucket.s3-website-us-east-1.amazonaws.com/
