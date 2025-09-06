@@ -1,73 +1,65 @@
-playbook: my-first-playbook.yaml
-[root@master ansible]# ansible-playbook my-first-playbook.yaml -C
-[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+Git hub actions
 
-PLAY [Installing apache and running] ************************************************************************************************
+CI-CD workflow using github actions for aws s3
 
-TASK [Gathering Facts] **************************************************************************************************************
-[WARNING]: Platform linux on host worker2 is using the discovered Python interpreter at /usr/bin/python3.9, but future installation
-of another Python interpreter could change the meaning of that path. See https://docs.ansible.com/ansible-
-core/2.15/reference_appendices/interpreter_discovery.html for more information.
-ok: [worker2]
-[WARNING]: Platform linux on host worker1 is using the discovered Python interpreter at /usr/bin/python3.9, but future installation
-of another Python interpreter could change the meaning of that path. See https://docs.ansible.com/ansible-
-core/2.15/reference_appendices/interpreter_discovery.html for more information.
-ok: [worker1]
+reference link - https://medium.com/@bryant.logan1/ci-cd-workflow-using-github-actions-for-aws-s3-6e15bae5b2d0
 
-TASK [configure a simple apache server] *********************************************************************************************
-fatal: [worker2]: FAILED! => {"changed": false, "msg": "It appears that a space separated string of packages was passed in as an argument. To operate on several packages, pass a comma separated string of packages or a list of packages."}
-fatal: [worker1]: FAILED! => {"changed": false, "msg": "It appears that a space separated string of packages was passed in as an argument. To operate on several packages, pass a comma separated string of packages or a list of packages."}
+1. Jenkins is self-hosted, so more secure. not gh actions; managed by micrososft. 
+2. creat s3 bucket - gave name 'arka-github-actions-bucket' -> unblock all public access 
+s3bucket -> properties -> static web hosting -> enable -> static -> index.html
+Now bucket -> permissions -> bucket policy ->edit -> (give your bucket name here )
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicReadGetObject",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": [
+                "s3:GetObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::Bucket-Name/*"
+            ]
+        }
+    ]
+}
+3. create a GitHub repo : git@github.com:arkaprovolti/static-github-action-web-hosting-s3bucket.git
+4. Now that the bucket is properly set up, you can head over to the IAM console to create a user that GitHub will use to upload files to S3.
+5. 	Create user and give s3 full access -> create access key
+Now to go to secrets and variables of our created GitHub repo -> actions -> new repository secret -> create 3 screts->
+Now we’re going to add 3 secrets for the AWS_S3_BUCKET, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY
+
+AWS_S3_BUCKET -> bucket name
+
+now go to actions from our repo  -> set up a workflow yourself -> 
+
+name: Upload Website
+
+on:
+  push:
+    branches:
+    - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: jakejarvis/s3-sync-action@master
+      with:
+        args: --follow-symlinks --delete --exclude '.git*/*'
+      env:
+        SOURCE_DIR: ./
+        AWS_REGION: us-east-1
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 
+Create index.html in repo
+
+When i run object url from bucket properties, its giving 404 not found, pls help
 
 
----
-- name: Installing apache and running
-  hosts: all
-  tasks:
-          - name: configure a simple apache server
-            yum:
-                    name: install httpd
-                    state: present
-
-          - name: Started Apache on my remote server
-            service:
-                    name: httpd
-                    state: started
-                    enabled: true
-
-          - name: create index.html file
-            copy:
-                     content: "Simple Apache Server."
-                     dest: /var/www/html/index.html
-
-
-
-
-
-
-
-
-
-
-
-
----
-- name: Installing apache and running
-  hosts: all
-  tasks:
-    - name: configure a simple apache server
-      yum:
-        name: httpd
-        state: present
-
-    - name: Started Apache on my remote server
-      service:
-        name: httpd
-        state: started
-        enabled: true
-
-    - name: create index.html file
-      copy:
-        content: "Simple Apache Server."
-        dest: /var/www/html/index.html
+create index.html in repo
