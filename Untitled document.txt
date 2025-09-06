@@ -1628,3 +1628,24 @@ create index.html in repo
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+S3 bucket access cross region
+
+Make 2 buckets each in North Virginia and Ohio. Make sure enabling aws versioning on both sides.
+Upload some objects on both buckets.
+Now take one bucket -> Management -> Replication Rules -> Destination -> if u r in North Virginia, select Ohio ->Yes -> 
+Now see bucket in ohio one
