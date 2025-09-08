@@ -1682,3 +1682,17 @@ Provision an EKS cluster (AWS) using Terraform
 
 
 
+
+
+Deploy an nginx container to a fargate cluster and expose it to internet.
+
+1. Create ecs cluster
+2. Create a task definition - > ECS -> task definition -> create new task definition -> launch type - fargate -> container 1 -> image- nginx:latest
+3. Create a loadbalancer and target group -> EC2 -> Load balancer -> Target groups -> create target group -> target type - ip address -> protocol -http, port 80 ->
+
+4. Now create load balancer -> application load balancer ->nginx-lb
+5. Create ECS service -> select the cluster u created ->create service -> load balancing -> select your loadbalancer ->
+
+didn't work....sir told us to containerize his maven app in docker and push it to ecr and deploy it to a fargate cluster and expose it to internet...treat that as HW
+
+
