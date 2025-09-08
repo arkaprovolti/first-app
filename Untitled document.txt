@@ -1657,3 +1657,28 @@ S3 bucket lifecycle configuration
 Get into any bucket -> management -> Create lifecycle rule ->apply for all -> Lifecycle rule actions: Transition current versions of objects between storage classes ->day30 -standard 1a -> day 60 - intelligent tiering -> Day 90 One zone 1A -> Day 180 - Glacier flexible retrieval
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Provision an EKS cluster (AWS) using Terraform
+
+1. Go to  the terraform init directory
+2. Follow this tutorial - https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks
+3. cd learn-terraform-provision-eks-cluster
+
+
+
