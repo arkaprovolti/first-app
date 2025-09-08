@@ -1701,3 +1701,12 @@ sir told us to containerize his maven app in docker and push it to ecr and deplo
 
 
 
+
+Containerizing a maven repo and pushing it to ecr and then deploying it to fargate cluster
+
+1. clone repo
+2. install java* , maven, git
+3. inside repo, run - mvn package
+4. run 4 push commands from ecr in cloned repo
+security group.
+5. Then repeat all the steps of "Deploy an nginx container to a fargate cluster and expose it to internet".
