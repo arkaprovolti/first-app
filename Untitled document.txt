@@ -1694,9 +1694,10 @@ Deploy an nginx container to a fargate cluster and expose it to internet.
 5. Create ECS service -> select the cluster u created ->create service -> load balancing -> select your loadbalancer ->
 DNS from load balancer click 
 
-(Make sure the subnets in service should be same as the ones in availability zones in load balancer)
+(Make sure the subnets in service should be same as the ones in availability zones in load balancer) (Can also access it without loadbalancer by getting intol cluster -> service -> task -> public ip:8080
 
 sir told us to containerize his maven app in docker and push it to ecr and deploy it to a fargate cluster and expose it to internet...treat that as HW
+
 
 
 
