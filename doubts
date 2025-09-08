@@ -654,3 +654,19 @@ output "eks_cluster_endpoint" {
 output "eks_cluster_name" {
   value = aws_eks_cluster.eks_cluster.name
 }
+
+
+
+
+
+
+
+
+
+###########################
+
+│ Error: creating EKS Cluster (my-eks-cluster): operation error EKS: CreateCluster, https response error StatusCode: 400, RequestID: ad9d2d39-94b4-42f3-98f9-624f04660d5b, UnsupportedAvailabilityZoneException: Cannot create cluster 'my-eks-cluster' because EKS does not support creating control plane instances in us-east-1-mci-1a, the targeted availability zone. Retry cluster creation using control plane subnets that span at least two of these availability zones: us-east-1a, us-east-1b, us-east-1c, us-east-1d, us-east-1f. Note, post cluster creation, you can run worker nodes in separate subnets/availability zones from control plane subnets/availability zones passed during cluster creation
+│
+│   with aws_eks_cluster.eks_cluster,
+│   on provider2.tf line 134, in resource "aws_eks_cluster" "eks_cluster":
+│  134: resource "aws_eks_cluster" "eks_cluster" {
