@@ -1388,59 +1388,58 @@ Making an instance with a new security group through terraform
 2. Make a tf file:
 
 provider "aws" {
-  region = "us-east-1"  # Replace with your desired region
+  region = "us-east-1"  # Replace with your desired region
 }
 
 # Create a new security group
 resource "aws_security_group" "my_sg" {
-  name        = "my-security-group"
-  description = "Security group for EC2 instances"
+  name        = "my-security-group"
+  description = "Security group for EC2 instances"
 
-  # Ingress rule for SSH
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow SSH from anywhere (restrict for production)
-  }
+  # Ingress rule for SSH
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Allow SSH from anywhere (restrict for production)
+  }
 
-  # Ingress rule for HTTP (example)
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # Ingress rule for HTTP (example)
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  # Egress rule (allow all outbound traffic)
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # Egress rule (allow all outbound traffic)
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  tags = {
-    Name = "my-security-group"
-  }
+  tags = {
+    Name = "my-security-group"
+  }
 }
 
 # Launch two EC2 instances
 resource "aws_instance" "my_instance" {
-  count         = 2
-  ami           = "ami-0c55b159cbfafe1f0"  # Replace with a valid AMI for your region
-  instance_type = "t2.micro"
-  security_groups = [aws_security_group.my_sg.name]
+  count         = 2
+  ami           = "ami-0e86e20dae9224db8"  # Valid AMI for us-east-1 (Amazon Linux 2, as of 2025)
+  instance_type = "t2.micro"
+  security_groups = [aws_security_group.my_sg.name]
 
-  tags = {
-    Name = "instance-${count.index + 1}"
-  }
+  tags = {
+    Name = "instance-${count.index + 1}"
+  }
 }
 
 output "instance_ids" {
-  value = aws_instance.my_instance[*].id
+  value = aws_instance.my_instance[*].id
 }
-
 
 
 
@@ -1656,4 +1655,5 @@ Now see bucket in ohio one
 
 S3 bucket lifecycle configuration
 Get into any bucket -> management -> Create lifecycle rule ->apply for all -> Lifecycle rule actions: Transition current versions of objects between storage classes ->day30 -standard 1a -> day 60 - intelligent tiering -> Day 90 One zone 1A -> Day 180 - Glacier flexible retrieval
+
 
