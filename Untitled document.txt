@@ -1891,3 +1891,65 @@ Cafter ansible setup in 3 machines, copy user code from sir's ansible repo -> Ch
 Now to check users -> ssh worker1 'cut -d: -f1 /etc/passwd | grep -E "sanjaya|drcula|iraonman"'
 ssh worker2 'cut -d: -f1 /etc/passwd | grep -E "sanjaya|drcula|iraonman"'
 
+
+
+
+
+
+
+
+
+Creating ec2 instance using ansible
+
+1. Setup ansible with 1 master only
+2. yum install unzip -y
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+create iam user
+aws configure
+yum install python3
+yum install pip -y
+#install pip install botocore
+#install pip install boto3
+
+aws ec2 describe-regions
+
+Create inventory.ini ->
+
+[localhost]
+localhost ansible_connection=local ansible_python_interpreter=/usr/bin/python3
+
+create creds.yaml
+
+---
+aws_access_key: YOUR_AWS_ACCESS_KEY_ID
+aws_secret_key: YOUR_AWS_SECRET_ACCESS_KEY
+
+
+
+create create-aws-ec2.yaml ->
+
+---
+- name: creating ec2 instance
+  hosts: localhost
+  vars_files:
+    - creds.yaml
+  tasks:
+    - name: creating Ec2 instance via Ansible
+      amazon.aws.ec2_instance:
+        name: k8s-master
+        instance_type: t3.micro
+        image_id: ami-00ca32bbc84273381
+        vpc_subnet_id: subnet-00f9c0eb863560b7c
+        security_group: sg-0bb7891bd30c0f817
+        key_name: 9sepkeya
+        region: us-east-1
+        count: 1
+        state: present
+
+
+ansible-playbook create-aws-ec2.yaml -i inventory.ini
+
+
+
