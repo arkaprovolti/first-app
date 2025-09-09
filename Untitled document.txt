@@ -1810,3 +1810,84 @@ Verify replicas: `kubectl get replicaset
  yum install httpd-tools
 
 ab -n 10000 -c 100 http://abf1d0b25c998443ebbda26a4adade88-1322233573.us-east-1.elb.amazonaws.com/
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ansible - setup httpd server and copy fstab from worker node to remote server
+
+setup ansible in 3 machines - 2 workers and 1 master
+
+Now in control pane ->
+
+---
+- name: Fetch fstab from worker1
+  hosts: worker1
+  become: yes
+  tasks:
+    - name: Fetch fstab file from worker1
+      fetch:
+        src: /etc/fstab
+        dest: /tmp/fstab_worker1
+        flat: yes
+      become: yes
+
+- name: Copy fstab to worker2
+  hosts: worker2
+  become: yes
+  tasks:
+    - name: Ensure destination directory exists on worker2
+      file:
+        path: /backup/fstab_folder
+        state: directory
+        mode: '0755'
+      become: yes
+
+    - name: Copy fstab file to worker2
+      copy:
+        src: /tmp/fstab_worker1
+        dest: /backup/fstab_folder/fstab
+        mode: '0644'
+      become: yes
+
+    - name: Clean up temporary file on control node
+      delegate_to: localhost
+      file:
+        path: /tmp/fstab_worker1
+        state: absent
+
+
+Now check in worker2, /backup
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ansible get users
+
+Cafter ansible setup in 3 machines, copy user code from sir's ansible repo -> Chapter 5 - Loops in Ansible/users-loop.yml -> users will be created in host machines
+Now to check users -> ssh worker1 'cut -d: -f1 /etc/passwd | grep -E "sanjaya|drcula|iraonman"'
+ssh worker2 'cut -d: -f1 /etc/passwd | grep -E "sanjaya|drcula|iraonman"'
+
