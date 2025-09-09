@@ -141,3 +141,80 @@ kubectl apply -f hpa.yaml
 - **Custom Metrics**: For scaling based on metrics like requests per second, integrate a metrics solution like Prometheus with the Prometheus Adapter for Kubernetes.
 
 If you prefer using a Deployment instead for easier management and better HPA support, let me know, and I can revise the steps accordingly!
+
+
+
+
+
+
+
+
+
+
+
+
+################################################
+
+replicaset and deploy it to internet.
+
+1. create eks cluster
+install metrics server for autoscaling
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+create a directory
+make replicaset yaml file:
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-replicaset
+  labels:
+    app: nginx
+spec:
+  # modify replicas according to your case
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+
+apply the replicaset -> kubectl apply -f nginx-replicaset.yaml
+
+Verify:
+- `kubectl get replicaset` (should show `web-app-replicaset` with 1/1 pods).
+- `kubectl get pods` (should show 1 pod running).
+
+
+
+Now we will expose the replicaset with a service
+vim service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app-service
+spec:
+  selector:
+    app: nginx  # Matches the ReplicaSet’s selector
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer  # Use NodePort for local clusters like Minikube
+
+
+kubectl apply -f service.yaml
