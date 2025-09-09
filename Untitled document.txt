@@ -1710,3 +1710,103 @@ Containerizing a maven repo and pushing it to ecr and then deploying it to farga
 4. run 4 push commands from ecr in cloned repo
 security group.
 5. Then repeat all the steps of "Deploy an nginx container to a fargate cluster and expose it to internet".
+
+
+
+
+
+
+replicaset and deploy it to internet, and saling it
+
+1. create eks cluster
+install metrics server for autoscaling
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+create a directory
+make replicaset yaml file:
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-replicaset
+  labels:
+    app: nginx
+spec:
+  # modify replicas according to your case
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+
+apply the replicaset -> kubectl apply -f nginx-replicaset.yaml
+
+Verify:
+- `kubectl get replicaset` (should show `web-app-replicaset` with 1/1 pods).
+- `kubectl get pods` (should show 1 pod running).
+
+
+
+Now we will expose the replicaset with a service
+vim service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app-service
+spec:
+  selector:
+    app: nginx  # Matches the ReplicaSet’s selector
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer  # Use NodePort for local clusters like Minikube
+
+
+kubectl apply -f service.yaml
+kubectl get svc -> url
+
+Now Set Up Horizontal Pod Autoscaler (HPA)
+
+vim hpa.yaml
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler                                                                                                        metadata:
+  name: web-app-hpa
+spec:
+  scaleTargetRef:                                                                                                                        apiVersion: apps/v1                                                                                                                  kind: ReplicaSet  # Targeting ReplicaSet directly
+    name: nginx-replicaset                                                                                                             minReplicas: 1                                                                                                                       maxReplicas: 10  # Maximum replicas to scale to
+  metrics:                                                                                                                             - type: Resource                                                                                                                       resource:
+      name: cpu                                                                                                                            target:                                                                                                                                type: Utilization
+        averageUtilization: 50  # Scale up if average CPU > 50%                                                                      
+
+
+
+
+
+kubectl apply -f hpa.yaml
+kubectl get hpa
+
+Generate load to test scaling (e.g., using `hey` or `ab`):
+
+
+Verify replicas: `kubectl get replicaset
+
+ yum install httpd-tools
+
+ab -n 10000 -c 100 http://abf1d0b25c998443ebbda26a4adade88-1322233573.us-east-1.elb.amazonaws.com/
