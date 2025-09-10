@@ -1539,12 +1539,7 @@ subnet-0b33844693b77ca44
 After eks cluster setup in ec2 instance,
 Make a dir -> vim pypod.yaml
 
-apiVersion: v1
-kind: Pod                                                                                                                            metadata:                                                                                                                              name: nginx                                                                                                                          labels:
-    app: nginx                                                                                                                       spec:                                                                                                                                  containers:
-  - name: nginx                                                                                                                          image: nginx:1.14.2
-    ports:                                                                                                                               - containerPort: 80 
-
+ 
 
 kubectl apply -f mypod.yaml
 kubectl expose pod nginx --type=LoadBalancer --port=80
@@ -1952,4 +1947,8 @@ create create-aws-ec2.yaml ->
 ansible-playbook create-aws-ec2.yaml -i inventory.ini
 
 
+
+
+
+in case of custom vpc using terraform, use new custom vpc yaml file from sir's terracode repo. Then run ssh-keygen on terraform machine and copy public key and paste it in key pair in yaml file for vpc code. Now db-server and web-server will be created. web-server can be accessed in terraform machine. For running db server, copy pvt key from terra machine, run web server in it and vim <keyname> -> paste private key. then run -> chmod 600 <key-name> -> Then run dn-server on web-server which in itself running in terra machine. When db machine accessed, try accessing google by ping google. It would show outgoing network but not ingoing.
 
