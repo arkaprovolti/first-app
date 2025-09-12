@@ -68,3 +68,112 @@ public class App {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Loose Coupling
+
+// Animal.java (now an interface for loose coupling)
+public interface Animal {
+    void play();  // Abstract method for playing
+}
+
+
+// Dog.java (implements Animal interface)
+public class Dog implements Animal {
+    // Constructor that prints something
+    public Dog() {
+        System.out.println("Dog constructor called. Creating a dog.");
+    }
+
+    // Implementation of play() method
+    @Override
+    public void play() {
+        System.out.println("The dog is playing fetch.");
+    }
+}
+
+
+
+
+// Cat.java (implements Animal interface)
+public class Cat implements Animal {
+    // Constructor that prints something
+    public Cat() {
+        System.out.println("Cat constructor called. Creating a cat.");
+    }
+
+    // Implementation of play() method
+    @Override
+    public void play() {
+        System.out.println("The cat is playing with a yarn ball.");
+    }
+}
+
+
+
+
+
+// Person.java (now uses loose coupling via interface and constructor injection)
+public class Person {
+    // Loose coupling: Depends on the Animal interface, not a concrete class
+    private Animal animal;
+
+    // Constructor injection: Animal is provided from outside, no 'new' here
+    public Person(Animal animal) {
+        this.animal = animal;
+    }
+
+    // Method to play with the animal
+    public void playWithAnimal() {
+        animal.play();  // Calls play() on whatever Animal implementation was injected
+    }
+}
+
+
+
+
+
+// App.java (The main Spring Boot application class)
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class App {
+    public static void main(String[] args) {
+        // Loose coupling demo: Create a specific Animal implementation
+        // You can easily swap Dog for Cat without changing Person.java
+        Animal dog = new Dog();  // Or use: Animal cat = new Cat();
+        
+        // Inject the Animal into Person via constructor
+        Person p = new Person(dog);  // Pass the animal here
+        
+        // Call the method to demonstrate
+        p.playWithAnimal();
+
+        // Starting the Spring Boot application (not using Spring DI in this basic demo)
+        SpringApplication.run(App.class, args);
+    }
+}
+
+
+
+
+
