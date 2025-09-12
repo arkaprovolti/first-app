@@ -9,3 +9,62 @@ The installer contains jre + jdk + development tools.
 6. Open environment variables. There should be user variable and system variable.
 7. You should select user variable ->path variable -> edit -> add one path -> paste our bin path.
 8. now run java -version in command -> you should see the version now.
+
+
+Steps to setup thw spring project and Tight Coupling
+
+1. Open-> https://start.spring.io/
+2. Project -> Maven  -> Springboot- 3.5.5 -> Project metadata - com.arka.core -> artifact- Spring core concepts -> Packaging - jar -> java - 24 -> (Skip dependencies as of now) -> generate -> download zip -> open that directory with IntelliJ
+3. Now go to src/main/java
+
+
+Tight Coupling 
+
+// Animal.java
+public class Animal {
+    // Constructor that prints something
+    public Animal() {
+        System.out.println("Animal constructor called. Creating a generic animal.");
+    }
+
+    // play() method that prints something
+    public void play() {
+        System.out.println("The animal is playing around.");
+    }
+}
+
+
+
+
+// Person.java
+public class Person {
+    // Tight coupling: Directly creating an instance of Animal using 'new'
+    private Animal animal = new Animal();
+
+    // Method to play with the animal
+    public void playWithAnimal() {
+        animal.play();  // Calling the play() method on the tightly coupled animal object
+    }
+}
+
+
+
+
+// App.java (The main Spring Boot application class)
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class App {
+    public static void main(String[] args) {
+        // Manually creating Person object (not using Spring's dependency injection yet)
+        Person p = new Person();
+        // Calling the method to demonstrate the behavior
+        p.playWithAnimal();
+
+        // Starting the Spring Boot application (though in this basic example, it's not using Spring features yet)
+        SpringApplication.run(App.class, args);
+    }
+}
+
+
