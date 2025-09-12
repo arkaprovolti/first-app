@@ -1,0 +1,11 @@
+Steps to download and install java
+
+1. Search jdk download oracle 
+2. https://www.oracle.com/in/java/technologies/downloads/#jdk24-windows
+3. Choose x64 installer bin.exe.zip for windows 
+The installer contains jre + jdk + development tools.
+4. Now in Program files -> Java -> copy unzipped jdk file
+5. Copy the bin directory path ->C:\Program Files\Java\jdk-24.0.2\bin
+6. Open environment variables. There should be user variable and system variable.
+7. You should select user variable ->path variable -> edit -> add one path -> paste our bin path.
+8. now run java -version in command -> you should see the version now.
