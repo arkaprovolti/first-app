@@ -177,3 +177,76 @@ public class App {
 
 
 
+
+
+
+
+
+
+
+
+
+Beans and Dependencies management using Spring
+
+// Animal.java (interface remains the same)
+public interface Animal {
+    void play();  // Abstract method for playing
+}
+
+
+
+// Cat.java (optional extra bean, also managed by Spring if needed)
+import org.springframework.stereotype.Component;
+
+// @Component  // Uncomment if you want Cat as a bean; otherwise, Spring won't create it automatically
+public class Cat implements Animal {
+    public Cat() {
+        System.out.println("Cat constructor called. Creating a cat.");
+    }
+
+    @Override
+    public void play() {
+        System.out.println("The cat is playing with a yarn ball.");
+    }
+}
+
+
+
+// Person.java (now a Spring bean with autowired dependency)
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component  // Declares this as a Spring bean, managed by the container
+public class Person {
+    // Loose coupling: Depends on Animal interface
+    @Autowired  // Tells Spring to automatically inject a matching bean (e.g., Dog) here
+    private Animal animal;
+
+    // No constructor needed for injection now; Spring handles it via field injection
+
+    public void playWithAnimal() {
+        animal.play();  // Uses the injected animal
+    }
+}
+
+
+
+// App.java (Main Spring Boot application; now uses Spring to get beans)
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ApplicationContext;
+
+@SpringBootApplication  // Enables auto-configuration and component scanning
+// If beans are in different packages, add: @ComponentScan(basePackages = {"com.example.package1", "com.example.package2"})
+public class App {
+    public static void main(String[] args) {
+        // Start Spring app and get the IoC container (ApplicationContext)
+        ApplicationContext context = SpringApplication.run(App.class, args);
+        
+        // Retrieve the Person bean from the container (no manual 'new')
+        Person p = context.getBean(Person.class);
+        
+        // Use it
+        p.playWithAnimal();
+    }
+}
