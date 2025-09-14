@@ -1,0 +1,3768 @@
+https://grok.com/c/01b27bbb-826d-430a-a3f9-74d3806b9534
+
+
+
+
+
+
+
+src/main/java/com/nexalinx/nexadoc/annotation/ValidAvatar.java
+package com.nexalinx.nexadoc.annotation;
+
+import com.nexalinx.nexadoc.validation.AvatarValidator;
+import jakarta.validation.Constraint;
+import jakarta.validation.Payload;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Constraint(validatedBy = AvatarValidator.class)
+@Target({ElementType.PARAMETER, ElementType.FIELD})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface ValidAvatar {
+    String message() default "Invalid file format or size.";
+
+    Class<?>[] groups() default {};
+
+    Class<? extends Payload>[] payload() default {};
+}
+
+
+src/main/java/com/nexalinx/nexadoc/annotation/ValidEmail.java
+package com.nexalinx.nexadoc.annotation;
+
+import com.nexalinx.nexadoc.validation.EmailValidator;
+import jakarta.validation.Constraint;
+import jakarta.validation.Payload;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Constraint(validatedBy = EmailValidator.class)
+@Target({ElementType.PARAMETER, ElementType.FIELD})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface ValidEmail {
+
+    String message() default "Invalid email format";
+
+    Class<?>[] groups() default {};
+
+    Class<? extends Payload>[] payload() default {};
+}
+
+src/main/java/com/nexalinx/nexadoc/annotation/ValidEnum.java
+package com.nexalinx.nexadoc.annotation;
+
+import com.nexalinx.nexadoc.validation.EnumValidator;
+import jakarta.validation.Constraint;
+import jakarta.validation.Payload;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Constraint(validatedBy = EnumValidator.class)
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface ValidEnum {
+    Class<? extends Enum<?>> enumClass();
+
+    String message() default "Invalid value. Must be one of {enumClass}";
+
+    Class<?>[] groups() default {};
+
+    Class<? extends Payload>[] payload() default {};
+}
+
+src/main/java/com/nexalinx/nexadoc/config/AppConfig.java
+package com.nexalinx.nexadoc.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
+
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    @Bean
+    public JPAQueryFactory jpaQueryFactory(EntityManager entityManager) {
+        return new JPAQueryFactory(entityManager);
+    }
+}
+
+src/main/java/com/nexalinx/nexadoc/config/FirebaseConfig.java
+package com.nexalinx.nexadoc.config;
+
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import javax.annotation.PostConstruct;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
+/**
+ * Configuration class for initializing and setting up the Firebase Admin SDK in a Spring Boot application.
+ * This class handles the initialization of Firebase credentials and provides beans for Google Cloud Storage
+ * and credentials management.
+ */
+@Slf4j
+@Configuration
+public class FirebaseConfig {
+
+    @Value("${firebase.config.path}")
+    private String firebaseConfigPath;
+
+    @Value("${BUCKET_NAME}")
+    private String bucketName;
+
+    private GoogleCredentials googleCredentials;
+
+    /**
+     * Initializes the Firebase Admin SDK after the bean is constructed.
+     * This method loads the service account credentials from the specified file path,
+     * configures Firebase options, and initializes the Firebase application if it hasn't been initialized yet.
+     *
+     * @throws IllegalStateException if there is an error reading the service account file or initializing Firebase
+     */
+    @PostConstruct
+    public void initializeFirebase() {
+        try (InputStream serviceAccount = new FileInputStream(firebaseConfigPath)) {
+            this.googleCredentials = GoogleCredentials.fromStream(serviceAccount);
+
+            if (FirebaseApp.getApps().isEmpty()) {
+                FirebaseOptions options = FirebaseOptions.builder()
+                        .setCredentials(googleCredentials)
+                        .setStorageBucket(bucketName)
+                        .build();
+
+                FirebaseApp.initializeApp(options);
+                log.info("Firebase Initialized.");
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to initialize Firebase", e);
+        }
+    }
+
+    /**
+     * Provides a Spring-managed bean for GoogleCredentials.
+     * This bean is available after the {@link #initializeFirebase()} method has executed.
+     *
+     * @return the initialized {@link GoogleCredentials} instance
+     * @throws IllegalStateException if the credentials have not been initialized yet
+     */
+    @Bean
+    public GoogleCredentials googleCredentials() {
+        if (googleCredentials == null) {
+            throw new IllegalStateException("GoogleCredentials has not been initialized yet.");
+        }
+        return googleCredentials;
+    }
+
+    /**
+     * Provides a Spring-managed bean for Google Cloud Storage client.
+     * This bean uses the initialized {@link GoogleCredentials} to configure and access the storage service.
+     *
+     * @return a configured {@link Storage} instance for interacting with Google Cloud Storage
+     */
+    @Bean
+    public Storage firebaseStorage() {
+        return StorageOptions.newBuilder()
+                .setCredentials(googleCredentials())
+                .build()
+                .getService();
+    }
+}
+
+src/main/java/com/nexalinx/nexadoc/config/OpenApiConfig.java
+package com.nexalinx.nexadoc.config;
+
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class OpenApiConfig {
+
+    @Bean
+    public OpenAPI openAPI() {
+        String securitySchemeName = "Auth JWT";
+        return new OpenAPI()
+                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
+                .components(new Components().addSecuritySchemes(securitySchemeName, apiSecurityScheme(securitySchemeName)))
+                .info(apiInfo());
+    }
+
+
+    private Info apiInfo() {
+        return new Info()
+                .title("NexaDoc Service API")
+                .description("API for web and mobile client")
+                .version("v0.0.1")
+                .contact(apiContact())
+                .license(apiLicence());
+    }
+
+    private Contact apiContact() {
+        return new Contact()
+                .name("NexaDoc Service API")
+                .email("")
+                .url("");
+    }
+
+
+    private License apiLicence() {
+        return new License()
+                .name("Apache License Version 2.0")
+                .url("https://www.apache.org/licenses/LICENSE-2.0");
+    }
+
+    private SecurityScheme apiSecurityScheme(String securitySchemeName) {
+        return new SecurityScheme()
+                .name(securitySchemeName)
+                .type(SecurityScheme.Type.HTTP)
+                .scheme("Bearer")
+                .bearerFormat("JWT");
+    }
+}
+
+src/main/java/com/nexalinx/nexadoc/constant
+package com.nexalinx.nexadoc.constant;
+
+public class MessageConstants {
+
+    public static final String ADD_USER = "User created successfully";
+    public static final String UPDATE_USER = "User updated successfully";
+    public static final String DELETED = "User deleted successfully";
+}
+
+src/main/java/com/nexalinx/nexadoc/constant/ResponseStatus.java
+package com.nexalinx.nexadoc.constant;
+
+public class ResponseStatus {
+
+    public static final String SUCCESS = "success";
+
+    public static final String ERROR = "error";
+}
+
+src/main/java/com/nexalinx/nexadoc/constant/ValidatorConstants.java
+package com.nexalinx.nexadoc.constant;
+
+public class ValidatorConstants {
+
+    public static final String ALREADY_EXIST = "Already exist";
+
+    public static final String INTERNAL_SERVER_ERROR = "Internal server error";
+}
+
+
+src/main/java/com/nexalinx/nexadoc/controller/AuthController.java
+package com.nexalinx.nexadoc.controller;
+
+import com.nexalinx.nexadoc.annotation.ValidEmail;
+import com.nexalinx.nexadoc.dto.LoginRequest;
+import com.nexalinx.nexadoc.dto.UserRegistrationRequest;
+import com.nexalinx.nexadoc.entity.User;
+import com.nexalinx.nexadoc.exception.CustomMessagePresentException;
+import com.nexalinx.nexadoc.response.CheckEmailResponse;
+import com.nexalinx.nexadoc.response.LoginResponse;
+import com.nexalinx.nexadoc.response.UserRegistrationResponse;
+import com.nexalinx.nexadoc.service.AuthService;
+import com.nexalinx.nexadoc.service.CheckEmailService;
+import com.nexalinx.nexadoc.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.json.simple.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
+
+import static com.nexalinx.nexadoc.constant.ValidatorConstants.ALREADY_EXIST;
+import static com.nexalinx.nexadoc.utils.ResponseBuilder.error;
+import static com.nexalinx.nexadoc.utils.ResponseBuilder.success;
+import static org.springframework.http.ResponseEntity.ok;
+
+/**
+ * Controller for handling user authentication operations such as registration, login, and email verification.
+ */
+@RestController
+@RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
+@Tag(name = "Auth", description = "API for user operations")
+public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+
+    private final AuthService authService;
+    private final CheckEmailService checkEmailService;
+    private final UserService userService;
+
+    /**
+     * Registers a new user and sends an email verification link.
+     *
+     * @param request the user registration request containing user details
+     * @return ResponseEntity containing a JSON object with the registration response and success message
+     * @throws CustomMessagePresentException if the email is already registered
+     */
+    @Operation(summary = "Register a new user", description = "Registers a user and sends an email verification link.")
+    @PostMapping("/register")
+    public ResponseEntity<JSONObject> registerUser(@Valid @RequestBody UserRegistrationRequest request) {
+        Optional<User> users = userService.findByEmailExist(request.getEmail());
+        if (users.isPresent())
+            throw new CustomMessagePresentException("This email " + ALREADY_EXIST);
+        UserRegistrationResponse response = authService.registerUser(request);
+        return ok(success(response, "User registered successfully. Email verification sent.").getJson());
+    }
+
+    /**
+     * Resends a verification email to an existing user.
+     *
+     * @param email the email address to resend the verification link to
+     * @return ResponseEntity containing a JSON object with the verification link or an error message
+     */
+    @Operation(summary = "Resend email verification link", description = "Resends a verification email to an existing user.")
+    @PostMapping("/resend-verification")
+    public ResponseEntity<JSONObject> resendVerificationEmail(@RequestParam String email) {
+        try {
+            String verificationLink = authService.resendVerificationEmail(email);
+            logger.info("Verification email link successfully generated for: {}", email);
+            return ok(success(verificationLink).getJson());
+        } catch (CustomMessagePresentException ex) {
+            logger.error("Error while resending verification email for {}: {}", email, ex.getMessage(), ex);
+            return ResponseEntity.badRequest().body(error(null, ex.getMessage()).getJson());
+        }
+    }
+
+    /**
+     * Authenticates a user using a social login ID token.
+     *
+     * @param request the login request containing the ID token
+     * @return ResponseEntity containing a JSON object with the login response and success message
+     */
+    @Operation(summary = "Authenticate user", description = "Handles user login")
+    @PostMapping("/login")
+    public ResponseEntity<JSONObject> login(@Valid @RequestBody LoginRequest request) {
+        try {
+            LoginResponse loginResponse = authService.login(request.getIdToken());
+            logger.info("Social login successfully processed for ID token.");
+            return ok(success(loginResponse, "User successfully authenticated and saved.").getJson());
+        } catch (CustomMessagePresentException ex) {
+            logger.error("Error during social login: {}", ex.getMessage(), ex);
+            return ResponseEntity.badRequest().body(error(null, ex.getMessage()).getJson());
+        }
+    }
+
+    /**
+     * Checks if an email is already registered in the system.
+     *
+     * @param email the email address to check
+     * @return ResponseEntity containing a JSON object with the email existence check result
+     * @throws IllegalArgumentException if the email format is invalid
+     * @throws DataAccessException if a database error occurs
+     */
+    @Operation(summary = "Check if Email is Already Registered", description = "Verifies whether the given email exists in the system.")
+    @GetMapping("/check-email")
+    public ResponseEntity<JSONObject> checkEmail(@RequestParam @Valid @ValidEmail String email) {
+        try {
+            boolean exists = checkEmailService.emailExists(email);
+            CheckEmailResponse response = new CheckEmailResponse();
+            response.setExists(exists);
+            return ok(success(response, "Email existence check successful.").getJson());
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid email provided: {}", email, e);
+            return ResponseEntity.badRequest().body(error("Invalid email format.").getJson());
+        } catch (DataAccessException e) {
+            logger.error("Database error while checking email: {}", email, e);
+            return ResponseEntity.internalServerError().body(error("Database error. Please try again later.").getJson());
+        }
+    }
+}
+
+src/main/java/com/nexalinx/nexadoc/controller/CurrentUserController.java
+package com.nexalinx.nexadoc.controller;
+
+import com.nexalinx.nexadoc.annotation.ValidAvatar;
+import com.nexalinx.nexadoc.dto.UpdateUserRequest;
+import com.nexalinx.nexadoc.exception.CustomMessagePresentException;
+import com.nexalinx.nexadoc.response.CurrentUserResponse;
+import com.nexalinx.nexadoc.service.CurrentUserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
+import org.json.simple.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+
+import static com.nexalinx.nexadoc.utils.ResponseBuilder.error;
+import static com.nexalinx.nexadoc.utils.ResponseBuilder.success;
+import static org.springframework.http.ResponseEntity.ok;
+
+/**
+ * Controller for managing user interests.
+ */
+@RestController
+@RequestMapping("/api/v1/current-user")
+@RequiredArgsConstructor
+@Tag(name = "Current user", description = "Current user info")
+public class CurrentUserController {
+
+    private static final Logger logger = LoggerFactory.getLogger(CurrentUserController.class);
+    private final CurrentUserService currentUserService;
+
+    /**
+     * Endpoint to upload and set the avatar for the authenticated user.
+     *
+     * @param file           The avatar file to upload. Must be a JPEG/PNG file and not exceed 5MB.
+     * @param firebaseUserId The Firebase User ID of the authenticated user.
+     * @return ResponseEntity  A response indicating the result of the operation.
+     * @throws IllegalArgumentException If validation errors occur during the request.
+     */
+    @PutMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Set user avatar",
+            description = "Allows authenticated users to set their avatar. Supported avatar types: " +
+                    "0: Standard, 1: Red Eyes, 2: Custom. File must be JPEG/PNG and not exceed 5MB.")
+    public ResponseEntity<JSONObject> setAvatar(
+            @ValidAvatar
+            @RequestParam("file") MultipartFile file,
+
+            @AuthenticationPrincipal String firebaseUserId) {
+        logger.info("Processing avatar upload request for user with Firebase ID: {}", firebaseUserId);
+        try {
+            currentUserService.setAvatar(file, firebaseUserId);
+            logger.info("Successfully set avatar for user with Firebase ID: {}", firebaseUserId);
+            return ok(success(null, "Avatar uploaded successfully.").getJson());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Validation error while setting avatar for user with Firebase ID {}: {}", firebaseUserId, e.getMessage());
+            return ResponseEntity.badRequest().body(error(null, e.getMessage()).getJson());
+        } catch (IOException e) {
+            logger.error("IO error while processing avatar for user with Firebase ID {}: {}", firebaseUserId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(error(null, e.getMessage()).getJson());
+        }
+    }
+
+    /**
+     * Fetch details of the currently authenticated user.
+     *
+     * @param firebaseUserId the identifier of the current user derived from the authorization token.
+     * @return ResponseEntity containing the current user details in a structured JSON format.
+     */
+    @GetMapping
+    @Operation(summary = "Get Current User Data", description = "Retrieve details of the currently authenticated user.")
+    public ResponseEntity<JSONObject> getCurrentUser(@AuthenticationPrincipal @NotNull String firebaseUserId) {
+        try {
+            logger.info("Fetching current user data for Firebase User ID: {}", firebaseUserId);
+            CurrentUserResponse userResponse = currentUserService.getCurrentUser(firebaseUserId);
+            return ok(success(userResponse, null).getJson());
+        } catch (CustomMessagePresentException e) {
+            logger.error("Error fetching current user data for Firebase User ID: {}: {}", firebaseUserId, e.getMessage());
+            return ResponseEntity.badRequest().body(error(null, e.getMessage()).getJson());
+        }
+    }
+
+    /**
+     * Update the currently authenticated user's details.
+     *
+     * @param firebaseUserId the identifier of the current user derived from the authorization token.
+     * @param request        the request payload containing the updated user details.
+     * @return ResponseEntity indicating the status of the operation.
+     */
+    @PutMapping
+    @Operation(summary = "Update Current User Data", description = "Update the first name and last name of the authenticated user.")
+    public ResponseEntity<JSONObject> updateCurrentUser(
+            @AuthenticationPrincipal String firebaseUserId,
+            @Valid @RequestBody UpdateUserRequest request) {
+        try {
+            logger.info("Updating user data for Firebase User ID: {}", firebaseUserId);
+            currentUserService.updateCurrentUser(firebaseUserId, request);
+            return ok(success(null, "User details updated successfully").getJson());
+        } catch (CustomMessagePresentException e) {
+            logger.error("Validation error for Firebase User ID: {}: {}", firebaseUserId, e.getMessage());
+            return ResponseEntity.badRequest().body(error(null, e.getMessage()).getJson());
+        }
+    }
+}
+
+src/main/java/com/nexalinx/nexadoc/controller/ReviewAndRatingController.java
+package com.nexalinx.nexadoc.controller;
+
+import com.nexalinx.nexadoc.dto.ReviewAndRatingDto;
+import com.nexalinx.nexadoc.exception.CustomMessagePresentException;
+import com.nexalinx.nexadoc.exception.ResourceNotFoundException;
+import com.nexalinx.nexadoc.service.ReviewAndRatingService;
+import com.nexalinx.nexadoc.utils.PaginatedResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.json.simple.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+import static com.nexalinx.nexadoc.utils.ResponseBuilder.*;
+
+/**
+ * Controller handling review and rating-related operations for authenticated users.
+ */
+@RestController
+@RequestMapping("/api/v1/reviews-and-ratings")
+@RequiredArgsConstructor
+@Tag(name = "Reviews and Ratings", description = "User Reviews and Ratings management API")
+public class ReviewAndRatingController {
+
+    private final ReviewAndRatingService reviewAndRatingService;
+    private final Logger logger = LoggerFactory.getLogger(ReviewAndRatingController.class);
+
+    /**
+     * Creates a new review and rating for the authenticated user.
+     *
+     * @param reviewAndRatingDto The review and rating details to create
+     * @param firebaseUserId     The Firebase ID of the authenticated user
+     * @return ResponseEntity containing the created review and rating or error details
+     */
+    @PostMapping
+    @Operation(summary = "Create a new review and rating", description = "Creates a new review and rating for the authenticated user.")
+    public ResponseEntity<JSONObject> createReviewAndRating(
+            @RequestBody @Valid ReviewAndRatingDto reviewAndRatingDto,
+            @AuthenticationPrincipal String firebaseUserId) {
+
+        logger.info("Processing request to create review and rating for user with Firebase ID: {}", firebaseUserId);
+        try {
+            ReviewAndRatingDto createdReviewAndRating = reviewAndRatingService.createReviewAndRating(reviewAndRatingDto, firebaseUserId);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(success(createdReviewAndRating, "Review and rating created successfully.").getJson());
+        } catch (CustomMessagePresentException e) {
+            logger.warn("Error creating review and rating: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(error(null, e.getMessage()).getJson());
+        }
+    }
+
+    /**
+     * Retrieve a paginated list of reviews and ratings for a specific user.
+     *
+     * @param limit          Optional parameter to limit the number of reviews and ratings returned (for pagination).
+     * @param offset         Optional parameter to specify the starting point for the reviews and ratings returned (for pagination).
+     * @param firebaseUserId The Firebase user ID of the authenticated user making the request.
+     * @return A ResponseEntity containing a JSONObject with the list of reviews and ratings or an error message.
+     */
+    @GetMapping
+    @Operation(summary = "Retrieve a list of reviews and ratings", description = "Retrieve a paginated list of reviews and ratings for the authenticated user.")
+    public ResponseEntity<JSONObject> getReviewsAndRatings(
+            @RequestParam(value = "limit", required = false) Integer limit,
+            @RequestParam(value = "offset", required = false) Integer offset,
+            @AuthenticationPrincipal String firebaseUserId) {
+
+        logger.info("Fetching reviews and ratings for user with Firebase ID: {}, limit: {}, offset: {}", firebaseUserId, limit, offset);
+
+        try {
+            PaginatedResponse response = reviewAndRatingService.getReviewsAndRatings(limit, offset, firebaseUserId);
+            logger.info("Successfully retrieved reviews and ratings for user with Firebase ID: {}", firebaseUserId);
+            return ResponseEntity.ok(paginatedSuccess(response).getJson());
+        } catch (CustomMessagePresentException e) {
+            logger.error("Error while retrieving reviews and ratings for user with Firebase ID: {}", firebaseUserId, e);
+            return ResponseEntity.badRequest().body(error(null, e.getMessage()).getJson());
+        }
+    }
+
+    /**
+     * Gets a specific review and rating by ID for the authenticated user.
+     *
+     * @param id             The ID of the review and rating to retrieve
+     * @param firebaseUserId The Firebase ID of the authenticated user
+     * @return ResponseEntity containing the review and rating or error details
+     */
+    @GetMapping("/{id}")
+    @Operation(summary = "Get review and rating by ID", description = "Gets a specific review and rating by ID for the authenticated user.")
+    public ResponseEntity<JSONObject> getReviewAndRatingById(
+            @PathVariable("id") Integer id,
+            @AuthenticationPrincipal String firebaseUserId) {
+
+        logger.info("Processing request to get review and rating ID {} for user with Firebase ID: {}", id, firebaseUserId);
+        try {
+            ReviewAndRatingDto reviewAndRating = reviewAndRatingService.getReviewAndRatingById(id, firebaseUserId);
+            return ResponseEntity.ok(success(reviewAndRating, "Review and rating retrieved successfully.").getJson());
+        } catch (ResourceNotFoundException e) {
+            logger.warn("Error retrieving review and rating ID {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error(null, e.getMessage()).getJson());
+        }
+    }
+
+    /**
+     * Updates an existing review and rating for the authenticated user.
+     *
+     * @param id                 The ID of the review and rating to update
+     * @param reviewAndRatingDto The review and rating details to update
+     * @param firebaseUserId     The Firebase ID of the authenticated user
+     * @return ResponseEntity containing success message or error details
+     */
+    @PutMapping("/{id}")
+    @Operation(summary = "Update a review and rating", description = "Updates an existing review and rating for the authenticated user.")
+    public ResponseEntity<JSONObject> updateReviewAndRating(
+            @PathVariable("id") Integer id,
+            @RequestBody @Valid ReviewAndRatingDto reviewAndRatingDto,
+            @AuthenticationPrincipal String firebaseUserId) {
+
+        logger.info("Processing request to update review and rating ID {} for user with Firebase ID: {}", id, firebaseUserId);
+        try {
+            reviewAndRatingService.updateReviewAndRating(id, reviewAndRatingDto, firebaseUserId);
+            return ResponseEntity.ok(success(null, "Review and rating updated successfully.").getJson());
+        } catch (CustomMessagePresentException | ResourceNotFoundException e) {
+            logger.warn("Error updating review and rating ID {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(error(null, e.getMessage()).getJson());
+        }
+    }
+
+    /**
+     * Soft-deletes a review and rating for the authenticated user.
+     *
+     * @param id             The ID of the review and rating to delete
+     * @param firebaseUserId The Firebase ID of the authenticated user
+     * @return ResponseEntity with no content or error details
+     */
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a review and rating", description = "Soft-deletes a review and rating for the authenticated user.")
+    public ResponseEntity<JSONObject> deleteReviewAndRating(
+            @PathVariable("id") Integer id,
+            @AuthenticationPrincipal String firebaseUserId) {
+
+        logger.info("Processing request to delete review and rating ID {} for user with Firebase ID: {}", id, firebaseUserId);
+        try {
+            reviewAndRatingService.deleteReviewAndRating(id, firebaseUserId);
+            return ResponseEntity.ok(success(null, "Review and rating deleted successfully.").getJson());
+        } catch (ResourceNotFoundException e) {
+            logger.warn("Error deleting review and rating ID {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(error(null, e.getMessage()).getJson());
+        }
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/dto/LoginRequest.java
+package com.nexalinx.nexadoc.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+/**
+ * DTO for login request.
+ */
+@Data
+public class LoginRequest {
+    @NotBlank(message = "Token is required.")
+    private String idToken;
+}
+
+
+src/main/java/com/nexalinx/nexadoc/dto/ReviewAndRatingDto.java
+package com.nexalinx.nexadoc.dto;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * Data Transfer Object for ReviewAndRating entity.
+ */
+@Getter
+@Setter
+public class ReviewAndRatingDto {
+
+    private Integer id;
+
+    @Size(max = 1000, message = "Comment must not exceed 1000 characters")
+    private String comment;
+
+    @NotNull(message = "Rating is required")
+    @Min(value = 1, message = "Rating must be at least 1")
+    @Max(value = 5, message = "Rating must not exceed 5")
+    private Integer rating;
+}
+
+src/main/java/com/nexalinx/nexadoc/dto/SocialLoginRequest.java
+package com.nexalinx.nexadoc.dto;
+
+import lombok.Data;
+
+import jakarta.validation.constraints.NotBlank;
+
+/**
+ * DTO for social login request.
+ */
+@Data
+public class SocialLoginRequest {
+    @NotBlank(message = "ID token is required.")
+    private String idToken;
+}
+
+src/main/java/com/nexalinx/nexadoc/dto/UpdateUserRequest.java
+package com.nexalinx.nexadoc.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * DTO for updating current user details.
+ */
+@Getter
+@Setter
+public class UpdateUserRequest {
+
+    @NotBlank(message = "First name is required")
+    @Size(max = 100, message = "First name must not exceed 100 characters")
+    private String firstName;
+
+    @NotBlank(message = "Last name is required")
+    @Size(max = 100, message = "Last name must not exceed 100 characters")
+    private String lastName;
+}
+
+src/main/java/com/nexalinx/nexadoc/dto/UserRegistrationRequest.java
+package com.nexalinx.nexadoc.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+/**
+ * DTO for user registration request.
+ */
+@Data
+public class UserRegistrationRequest {
+
+    @NotBlank(message = "First name is required")
+    @Size(max = 100, message = "First name must not exceed 100 characters")
+    private String firstName;
+
+    @NotBlank(message = "Last name is required")
+    @Size(max = 100, message = "Last name must not exceed 100 characters")
+    private String lastName;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
+    private String email;
+
+    @NotBlank(message = "idToken is required")
+    private String idToken;
+}
+
+
+src/main/java/com/nexalinx/nexadoc/entity/BaseEntity.java
+package com.nexalinx.nexadoc.entity;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.io.Serial;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
+@Getter
+@Setter
+@MappedSuperclass
+public abstract class BaseEntity implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Integer id;
+
+    @JsonIgnore
+    @Column(name = "created_at", updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP AT TIME ZONE 'UTC'")
+    protected OffsetDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC);
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/entity/BaseEntityWithUpdate.java
+package com.nexalinx.nexadoc.entity;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PreUpdate;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.io.Serial;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
+@Getter
+@Setter
+@MappedSuperclass
+public abstract class BaseEntityWithUpdate extends BaseEntity {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    @JsonIgnore
+    @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP AT TIME ZONE 'UTC'")
+    protected OffsetDateTime updatedAt;
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC);
+    }
+
+}
+
+
+src/main/java/com/nexalinx/nexadoc/entity/BaseEntityWithUpdateAndDelete.java
+package com.nexalinx.nexadoc.entity;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PreUpdate;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
+@Getter
+@Setter
+@MappedSuperclass
+public abstract class BaseEntityWithUpdateAndDelete extends BaseEntity implements UpdatableEntity, SoftDeletableEntity {
+
+    @JsonIgnore
+    @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP AT TIME ZONE 'UTC'")
+    private OffsetDateTime updatedAt;
+
+    @JsonIgnore
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC);
+    }
+
+    @Override
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @Override
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    @Override
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    @Override
+    public void setDeletedAt(OffsetDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+}
+
+src/main/java/com/nexalinx/nexadoc/entity/MediaStorage.java
+package com.nexalinx.nexadoc.entity;
+
+import com.nexalinx.nexadoc.enums.ReferenceType;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
+
+@Getter
+@Setter
+@Entity
+@DynamicInsert
+@DynamicUpdate
+@NoArgsConstructor
+@Table(name = "media_storage")
+public class MediaStorage extends BaseEntityWithUpdate {
+
+    @Column(name = "owner_id")
+    private Integer ownerId;
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "reference_type", nullable = false)
+    private ReferenceType referenceType;
+
+    @Column(name = "reference_id", nullable = false)
+    private Integer referenceId;
+
+    @Column(name = "external_id", nullable = false, length = 64, unique = true)
+    private String externalId;
+
+    @Column(name = "url", nullable = false, length = 512)
+    private String url;
+
+    @Column(name = "mime_type", nullable = false, length = 64)
+    private String mimeType;
+}
+
+src/main/java/com/nexalinx/nexadoc/entity/ReviewAndRating.java
+package com.nexalinx.nexadoc.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
+
+@Getter
+@Setter
+@Entity
+@DynamicInsert
+@DynamicUpdate
+@NoArgsConstructor
+@Table(schema = "public", name = "review_and_rating")
+public class ReviewAndRating extends BaseEntityWithUpdateAndDelete {
+
+    @Column(name = "comment")
+    private String comment;
+
+    @Column(name = "rating")
+    private Integer rating;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
+    private User user;
+}
+
+src/main/java/com/nexalinx/nexadoc/entity/SoftDeletableEntity.java
+package com.nexalinx.nexadoc.entity;
+
+import java.time.OffsetDateTime;
+
+public interface SoftDeletableEntity {
+    OffsetDateTime getDeletedAt();
+    void setDeletedAt(OffsetDateTime deletedAt);
+}
+
+src/main/java/com/nexalinx/nexadoc/entity/UpdatableEntity.java
+package com.nexalinx.nexadoc.entity;
+
+import java.time.OffsetDateTime;
+
+public interface UpdatableEntity {
+    OffsetDateTime getUpdatedAt();
+    void setUpdatedAt(OffsetDateTime updatedAt);
+}
+
+src/main/java/com/nexalinx/nexadoc/entity/User.java
+package com.nexalinx.nexadoc.entity;
+
+import com.nexalinx.nexadoc.enums.UserStatus;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
+
+import java.io.Serial;
+
+@Getter
+@Setter
+@Entity
+@DynamicInsert
+@DynamicUpdate
+@NoArgsConstructor
+@Table(name = "users")
+public class User extends BaseEntityWithUpdate {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    @Column(name = "first_name", length = 100, nullable = false)
+    private String firstName;
+
+    @Column(name = "last_name", length = 100, nullable = false)
+    private String lastName;
+
+    @Column(name = "email", length = 256, nullable = false, unique = true)
+    @Email
+    @Size(max = 256)
+    private String email;
+
+    @Column(name = "is_email_verified")
+    private Boolean isEmailVerified = false;
+
+    @Column(name = "firebase_user_id", length = 100, nullable = false)
+    private String firebaseUserId;
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "status", length = 20)
+    private UserStatus userStatus;
+}
+
+
+src/main/java/com/nexalinx/nexadoc/enums/ReferenceType.java
+package com.nexalinx.nexadoc.enums;
+
+import lombok.Getter;
+
+@Getter
+public enum ReferenceType {
+
+    UsersAvatars(0);
+
+    private final Integer label;
+
+    ReferenceType(Integer label) {
+        this.label = label;
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/enums/UserStatus.java
+package com.nexalinx.nexadoc.enums;
+
+import lombok.Getter;
+
+@Getter
+public enum UserStatus {
+
+    Inactive(0),
+    Active(1);
+
+
+    private final Integer label;
+
+    UserStatus(Integer label) {
+        this.label = label;
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/exception/ApiError.java
+package com.nexalinx.nexadoc.exception;
+
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class ApiError {
+
+    public static Map<String, String> fieldError(BindingResult bindingResult) {
+        Map<String, String> fieldErrors = new HashMap<>();
+        if (bindingResult.hasErrors()) {
+            List<FieldError> errors = bindingResult.getFieldErrors();
+            errors.forEach(e -> {
+                fieldErrors.put(e.getField(), e.getDefaultMessage());
+            });
+        }
+        return fieldErrors;
+    }
+}
+
+
+
+
+src/main/java/com/nexalinx/nexadoc/exception/CustomMessagePresentException.java
+package com.nexalinx.nexadoc.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+import java.io.Serial;
+
+@ResponseStatus(value = HttpStatus.NOT_FOUND)
+public class CustomMessagePresentException extends RuntimeException {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    public CustomMessagePresentException(String s) {
+        super(s);
+    }
+
+}
+
+src/main/java/com/nexalinx/nexadoc/exception/EmailNotVerifiedException.java
+package com.nexalinx.nexadoc.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+import java.io.Serial;
+
+@ResponseStatus(value = HttpStatus.NOT_FOUND)
+public class EmailNotVerifiedException extends RuntimeException {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    public EmailNotVerifiedException(String s) {
+        super(s);
+    }
+
+}
+
+src/main/java/com/nexalinx/nexadoc/exception/GlobalExceptionHandler.java
+package com.nexalinx.nexadoc.exception;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.nexalinx.nexadoc.utils.ResponseBuilder;
+import lombok.extern.slf4j.Slf4j;
+import org.json.simple.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Slf4j
+@Order(Ordered.HIGHEST_PRECEDENCE)
+@ControllerAdvice
+public class GlobalExceptionHandler {
+
+    public Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<JSONObject> handleNotFoundExceptions(Exception ex, WebRequest request) {
+        logger.error("ResourceNotFoundException: {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(ResponseBuilder.error(null, (ex.getMessage())).getJson(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(CustomMessagePresentException.class)
+    public ResponseEntity<JSONObject> handleCustomMessagePresentExceptions(Exception ex, WebRequest request) {
+        logger.error("CustomMessagePresentException: {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(ResponseBuilder.error(null, (ex.getMessage())).getJson(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<JSONObject> handleRuntimeExceptions(Exception ex, WebRequest request) {
+        logger.error("RuntimeException: {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(ResponseBuilder.error(null, (ex.getMessage())).getJson(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<JSONObject> handleIllegalArgumentExceptions(Exception ex, WebRequest request) {
+        logger.error("IllegalArgumentException: {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(ResponseBuilder.error(null, (ex.getMessage())).getJson(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(JsonParseException.class)
+    public ResponseEntity<JSONObject> handleJsonParseException(JsonParseException exc) {
+        logger.error("JsonParseException: {}", exc.getMessage(), exc);
+        return new ResponseEntity<>(ResponseBuilder.error(null, exc.getMessage()).getJson(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<JSONObject> handleValidationException(MethodArgumentNotValidException ex) {
+        BindingResult bindingResult = ex.getBindingResult();
+        Map<String, String> errors = new HashMap<>();
+
+        for (FieldError error : bindingResult.getFieldErrors()) {
+            logger.error("Validation error: {} - {}", error.getField(), error.getDefaultMessage());
+            errors.put(error.getField(), error.getDefaultMessage());
+        }
+
+        String firstErrorMessage = errors.values().stream().findFirst().orElse("Validation error");
+        logger.error("MethodArgumentNotValidException: {}", firstErrorMessage, ex);
+        return new ResponseEntity<>(ResponseBuilder.error(null, firstErrorMessage).getJson(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<JSONObject> handleValidationException(HandlerMethodValidationException ex) {
+        return new ResponseEntity<>(ResponseBuilder.error(null, "Invalid email format").getJson(), HttpStatus.BAD_REQUEST);
+    }
+
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<JSONObject> handleEmailNotVerifiedException(EmailNotVerifiedException exc) {
+        logger.error("EmailNotVerifiedException: {}", exc.getMessage(), exc);
+        return new ResponseEntity<>(ResponseBuilder.error(null, exc.getMessage()).getJson(), HttpStatus.FORBIDDEN);
+    }
+}
+
+src/main/java/com/nexalinx/nexadoc/exception/ResourceNotFoundException.java
+package com.nexalinx.nexadoc.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+import java.io.Serial;
+
+/**
+ * Exception thrown when a requested resource is not found.
+ *
+ * <p>This exception is annotated with {@code @ResponseStatus(HttpStatus.NOT_FOUND)},
+ * which means when this exception is thrown from a controller method, Spring will
+ * automatically return an HTTP 404 (Not Found) response to the client.</p>
+ *
+ * <p>This is typically used in RESTful applications to indicate that the requested
+ * resource (such as an entity with a specific ID) does not exist in the system.</p>
+ */
+@ResponseStatus(value = HttpStatus.NOT_FOUND)
+public class ResourceNotFoundException extends RuntimeException {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Constructs a new ResourceNotFoundException with no detail message.
+     */
+    public ResourceNotFoundException() {
+    }
+
+    /**
+     * Constructs a new ResourceNotFoundException with the specified detail message.
+     *
+     * @param message the detail message that describes the reason for the exception
+     */
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/repository/MediaStorageRepository.java
+package com.nexalinx.nexadoc.repository;
+
+import com.nexalinx.nexadoc.entity.MediaStorage;
+import com.nexalinx.nexadoc.enums.ReferenceType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.querydsl.QuerydslPredicateExecutor;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository interface for managing {@link MediaStorage} entities.
+ */
+@Repository
+public interface MediaStorageRepository extends JpaRepository<MediaStorage, Integer>, QuerydslPredicateExecutor<MediaStorage> {
+    Optional<MediaStorage> findByReferenceIdAndReferenceType(Integer referenceId, ReferenceType referenceType);
+    List<MediaStorage> findAllByReferenceIdAndReferenceType(Integer referenceId, ReferenceType referenceType);
+}
+
+
+src/main/java/com/nexalinx/nexadoc/repository/ReviewAndRatingRepository.java
+package com.nexalinx.nexadoc.repository;
+
+import com.nexalinx.nexadoc.entity.ReviewAndRating;
+import com.nexalinx.nexadoc.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface ReviewAndRatingRepository extends JpaRepository<ReviewAndRating, Integer>, ReviewAndRatingRepositoryCustom {
+
+    /**
+     * Finds all active (not deleted) reviews and ratings for a specific user.
+     *
+     * @param user The user entity
+     * @return List of active reviews and ratings
+     */
+    List<ReviewAndRating> findByUserAndDeletedAtIsNull(User user);
+
+    /**
+     * Finds a specific active review and rating by ID and user.
+     *
+     * @param id   Review and rating ID
+     * @param user The user entity
+     * @return Optional containing the review and rating if found
+     */
+    Optional<ReviewAndRating> findByIdAndUserAndDeletedAtIsNull(Integer id, User user);
+}
+
+
+src/main/java/com/nexalinx/nexadoc/repository/ReviewAndRatingRepositoryCustom.java
+package com.nexalinx.nexadoc.repository;
+
+import com.nexalinx.nexadoc.response.ReviewAndRatingResponse;
+
+import java.util.List;
+
+/**
+ * Custom repository interface for advanced review and rating-related database operations.
+ */
+public interface ReviewAndRatingRepositoryCustom {
+
+    /**
+     * Retrieves a paginated list of reviews and ratings for a specific user.
+     *
+     * @param limit          The maximum number of reviews and ratings to return.
+     * @param offset         The starting point for the reviews and ratings to return (used for pagination).
+     * @param firebaseUserId The Firebase user ID of the authenticated user making the request.
+     * @return A list of {@link ReviewAndRatingResponse} objects representing the filtered and paginated reviews and ratings.
+     */
+    List<ReviewAndRatingResponse> getReviewsAndRatings(Integer limit, Integer offset, String firebaseUserId);
+
+    /**
+     * Fetches the total count of reviews and ratings for a specific user.
+     *
+     * @param firebaseUserId The Firebase user ID of the authenticated user making the request.
+     * @return The total count of reviews and ratings for the user.
+     */
+    Integer fetchReviewsAndRatingsCount(String firebaseUserId);
+}
+
+
+src/main/java/com/nexalinx/nexadoc/repository/UserRepository.java
+package com.nexalinx.nexadoc.repository;
+
+import com.nexalinx.nexadoc.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.querydsl.QuerydslPredicateExecutor;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+/**
+ * Repository interface for {@link User} entities.
+ * Provides CRUD operations and custom query methods for user management.
+ * Extends {@link JpaRepository} for JPA functionality and
+ * {@link QuerydslPredicateExecutor} for type-safe queries.
+ */
+@Repository
+public interface UserRepository extends JpaRepository<User, Integer>, QuerydslPredicateExecutor<User> {
+
+    /**
+     * Finds a user by their email address.
+     *
+     * @param email the email address to search for
+     * @return an {@link Optional} containing the user if found, empty otherwise
+     */
+    Optional<User> findByEmail(String email);
+
+    /**
+     * Finds a user by their Firebase User ID.
+     *
+     * @param firebaseUserId the Firebase User ID to search for
+     * @return an {@link Optional} containing the user if found, empty otherwise
+     */
+    Optional<User> findByFirebaseUserId(String firebaseUserId);
+
+    /**
+     * Checks whether a user exists with the given email address.
+     *
+     * @param email the email address to check
+     * @return true if a user exists with the given email, false otherwise
+     */
+    boolean existsByEmail(String email);
+}
+
+src/main/java/com/nexalinx/nexadoc/response/CheckEmailResponse.java
+package com.nexalinx.nexadoc.response;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+public class CheckEmailResponse {
+    private boolean exists;
+}
+
+src/main/java/com/nexalinx/nexadoc/response/CurrentUserResponse.java
+package com.nexalinx.nexadoc.response;
+
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * DTO for returning current user details.
+ */
+@Getter
+@Setter
+public class CurrentUserResponse {
+
+    private Integer id;
+    private String firstName;
+    private String lastName;
+    private String email;
+    private Boolean isEmailVerified;
+    private String status;
+    private String firebaseUserId;
+    private String joinDate;
+    private String avatar;
+}
+
+src/main/java/com/nexalinx/nexadoc/response/LoginResponse.java
+package com.nexalinx.nexadoc.response;
+
+import lombok.Builder;
+import lombok.Data;
+
+/**
+ * DTO for login response.
+ */
+@Data
+@Builder
+public class LoginResponse {
+    private Integer id;
+    private String firstName;
+    private String lastName;
+    private String email;
+    private Boolean isEmailVerified;
+    private String firebaseUserId;
+}
+
+src/main/java/com/nexalinx/nexadoc/response/MediaStorageResponse.java
+package com.nexalinx.nexadoc.response;
+
+import com.nexalinx.nexadoc.enums.ReferenceType;
+import lombok.Builder;
+import lombok.Data;
+
+/**
+ * DTO for media storage response.
+ */
+@Data
+@Builder
+public class MediaStorageResponse {
+    private Integer ownerId;
+
+    private ReferenceType referenceType;
+
+    private Integer referenceId;
+
+    private String externalId;
+
+    private String url;
+
+    private String mimeType;
+}
+
+src/main/java/com/nexalinx/nexadoc/response/ReviewAndRatingResponse.java
+
+package com.nexalinx.nexadoc.response;
+
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.OffsetDateTime;
+
+/**
+ * Data Transfer Object for representing a review and rating in the response.
+ */
+@Getter
+@Setter
+@Builder
+public class ReviewAndRatingResponse {
+
+    private Integer id;
+    private String comment;
+    private Integer rating;
+    private OffsetDateTime createdAt;
+    private String userName;
+}
+
+
+src/main/java/com/nexalinx/nexadoc/response/UserRegistrationResponse.java
+package com.nexalinx.nexadoc.response;
+
+import lombok.Builder;
+import lombok.Data;
+
+/**
+ * DTO for user registration response.
+ */
+@Data
+@Builder
+public class UserRegistrationResponse {
+    private Integer id;
+    private String firstName;
+    private String lastName;
+    private String email;
+    private Boolean isEmailVerified;
+    private String firebaseUserId;
+}
+
+src/main/java/com/nexalinx/nexadoc/response/UserResponse.java
+package com.nexalinx.nexadoc.response;
+
+import com.nexalinx.nexadoc.entity.User;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+public class UserResponse {
+
+    private Integer id;
+    private String firstName;
+    private String lastName;
+    private String email;
+    private String normalizedEmail;
+    private Boolean isEmailVerified;
+    private String status;
+    private String firebaseUserId;
+
+    public static UserResponse from(User user) {
+        if (user == null) {
+            return null; // or return a default UserResponse object
+        }
+        UserResponse response = new UserResponse();
+        response.setId(user.getId());
+        response.setFirstName(user.getFirstName());
+        response.setLastName(user.getLastName());
+        response.setEmail(user.getEmail());
+        response.setIsEmailVerified(user.getIsEmailVerified());
+        response.setStatus(String.valueOf(user.getUserStatus()));
+        response.setFirebaseUserId(user.getFirebaseUserId());
+        return response;
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/security/CustomAuthEntryPoint.java
+package com.nexalinx.nexadoc.security;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nexalinx.nexadoc.constant.ResponseStatus;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+@Component
+public class CustomAuthEntryPoint implements AuthenticationEntryPoint {
+
+    private static final Logger logger = LoggerFactory.getLogger(CustomAuthEntryPoint.class);
+
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException {
+        logger.warn("Unauthorized access attempt: {} {} from IP: {}",
+                request.getMethod(), request.getRequestURI(), request.getRemoteAddr());
+
+        response.setContentType("application/json");
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+
+        Map<String, Object> responseBody = new HashMap<>();
+        responseBody.put("status", ResponseStatus.ERROR);
+        responseBody.put("message", "Authentication failed");
+        responseBody.put("errors", authException.getMessage());
+        responseBody.put("path", request.getRequestURI());
+        responseBody.put("method", request.getMethod());
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.writeValue(response.getOutputStream(), responseBody);
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/security/CustomAuthenticationFailureHandler.java
+package com.nexalinx.nexadoc.security;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+
+import java.io.IOException;
+
+/**
+ * Custom implementation of {@link AuthenticationFailureHandler} that sends
+ * an HTTP 401 (Unauthorized) response with the authentication failure message
+ * when authentication fails.
+ */
+public class CustomAuthenticationFailureHandler implements AuthenticationFailureHandler {
+
+    /**
+     * Handles an authentication failure by sending an HTTP 401 (Unauthorized) response
+     * with the exception message as the response body.
+     *
+     * @param httpServletRequest  the request during which the authentication attempt occurred
+     * @param httpServletResponse the response to be sent to the client
+     * @param e                   the exception which caused the authentication failure
+     * @throws IOException if an input or output exception occurs
+     */
+    @Override
+    public void onAuthenticationFailure(HttpServletRequest httpServletRequest,
+                                        HttpServletResponse httpServletResponse,
+                                        AuthenticationException e) throws IOException {
+        httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        httpServletResponse.getWriter().write("Authentication Failed: " + e.getMessage());
+        httpServletResponse.getWriter().flush();
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/security/CustomAuthenticationToken.java
+package com.nexalinx.nexadoc.security;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+
+import java.util.Collection;
+
+/**
+ * Custom authentication token that extends {@link UsernamePasswordAuthenticationToken}
+ * to include a user ID along with the standard principal, credentials, and authorities.
+ *
+ * @see UsernamePasswordAuthenticationToken
+ */
+public class CustomAuthenticationToken extends UsernamePasswordAuthenticationToken {
+    private final Long userId;
+
+    /**
+     * Creates a new {@code CustomAuthenticationToken} instance with the specified principal,
+     * credentials, authorities, and user ID.
+     *
+     * @param principal   the principal (typically a username or user object)
+     * @param credentials the credentials (typically a password)
+     * @param authorities the collection of granted authorities for the principal
+     * @param userId      the unique identifier of the user
+     * @throws IllegalArgumentException if the principal, credentials, or authorities are null
+     */
+    public CustomAuthenticationToken(Object principal, Object credentials,
+                                     Collection<? extends GrantedAuthority> authorities, Long userId) {
+        super(principal, credentials, authorities);
+        this.userId = userId;
+    }
+
+    /**
+     * Returns the user ID associated with this authentication token.
+     *
+     * @return the unique identifier of the user
+     */
+    public Long getUserId() {
+        return userId;
+    }
+}
+
+src/main/java/com/nexalinx/nexadoc/security/FirebaseAuthenticationFilter.java
+package com.nexalinx.nexadoc.security;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.FirebaseToken;
+import com.nexalinx.nexadoc.constant.ResponseStatus;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Custom authentication filter for Firebase JWT token verification.
+ * This filter intercepts incoming requests and validates Firebase ID tokens
+ * in the Authorization header.
+ */
+@Component
+public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(FirebaseAuthenticationFilter.class);
+
+    /**
+     * Processes each HTTP request to verify Firebase authentication token.
+     *
+     * @param request     the HTTP request
+     * @param response    the HTTP response
+     * @param filterChain the filter chain to continue processing
+     * @throws ServletException if a servlet-specific error occurs
+     * @throws IOException      if an I/O error occurs during request processing
+     */
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+        String authHeader = request.getHeader("Authorization");
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            logger.info("Verifying Firebase token for request: {}", request.getRequestURI());
+
+            try {
+                FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
+                String uid = decodedToken.getUid();
+                logger.info("Token successfully verified for user: {}", uid);
+
+                // Set Authentication for Spring Security context
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(uid, null, Collections.emptyList());
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (FirebaseAuthException e) {
+                logger.error("Token verification failed: {}", e.getMessage());
+
+                response.setContentType("application/json");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+
+                Map<String, Object> responseBody = new HashMap<>();
+                responseBody.put("status", ResponseStatus.ERROR);
+                responseBody.put("message", "Invalid token");
+                responseBody.put("errors", e.getMessage());
+
+                ObjectMapper mapper = new ObjectMapper();
+                mapper.writeValue(response.getOutputStream(), responseBody);
+                return;
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/security/JwtAuthEntryPoint.java
+package com.nexalinx.nexadoc.security;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+
+/**
+ * Custom implementation of {@link AuthenticationEntryPoint} for handling unauthorized access attempts.
+ * This class is triggered when an unauthenticated user attempts to access a secure HTTP resource,
+ * resulting in an {@link AuthenticationException}. It responds with an HTTP 401 Unauthorized status.
+ */
+@Component
+public class JwtAuthEntryPoint implements AuthenticationEntryPoint {
+
+    /**
+     * Handles the response when an unauthenticated user attempts to access a secured resource.
+     * This method is invoked by Spring Security when an {@link AuthenticationException} occurs,
+     * sending an HTTP 401 Unauthorized response with the exception message.
+     *
+     * @param request       the {@link HttpServletRequest} representing the incoming request
+     * @param response      the {@link HttpServletResponse} to send the error response
+     * @param authException the {@link AuthenticationException} that triggered this entry point
+     * @throws IOException      if an input or output error occurs while writing the response
+     * @throws ServletException if a servlet-specific error occurs during processing
+     */
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response,
+                         AuthenticationException authException) throws IOException, ServletException {
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/security/JwtGenerator.java
+package com.nexalinx.nexadoc.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
+
+import java.util.Date;
+
+/**
+ * Component responsible for generating, parsing, and validating JSON Web Tokens (JWTs).
+ * This class uses a secret key and configurable expiration times to create access and refresh tokens,
+ * and provides methods to extract claims and validate token integrity.
+ */
+@Component
+public class JwtGenerator {
+
+    @Value("${application.security.jwt.secret-key}")
+    private String secretKey;
+
+    @Value("${application.security.jwt.access-token-expiration}")
+    private long accessTokenExpire;
+
+    @Value("${application.security.jwt.refresh-token-expiration}")
+    private long refreshTokenExpire;
+
+    /**
+     * Generates a JWT token with the specified authentication, user type, and expiration time.
+     *
+     * @param authentication the {@link Authentication} object containing user details
+     * @param userType       the type of user to include as a claim in the token
+     * @param expireTime     the expiration time in milliseconds from the current time
+     * @return the generated JWT token as a compact string
+     */
+    public String generateToken(Authentication authentication, Long userType, Long expireTime) {
+        String username = authentication.getName();
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expireTime))
+                .claim("usertype", userType)
+                .compact();
+    }
+
+    /**
+     * Generates a JWT token with the specified username, user type, and expiration time.
+     *
+     * @param userType   the type of user to include as a claim in the token
+     * @param username   the username to set as the subject of the token
+     * @param expireTime the expiration time in milliseconds from the current time
+     * @return the generated JWT token as a compact string
+     */
+    public String generateToken(Long userType, String username, Long expireTime) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expireTime))
+                .claim("usertype", userType)
+                .compact();
+    }
+
+    /**
+     * Generates an access token for the authenticated user with the specified user type.
+     *
+     * @param authentication the {@link Authentication} object containing user details
+     * @param userType       the type of user to include as a claim in the token
+     * @return the generated access token as a compact string
+     */
+    public String generateAccessToken(Authentication authentication, Long userType) {
+        return generateToken(authentication, userType, accessTokenExpire);
+    }
+
+    /**
+     * Generates a refresh token for the authenticated user with the specified user type.
+     *
+     * @param authentication the {@link Authentication} object containing user details
+     * @param userType       the type of user to include as a claim in the token
+     * @return the generated refresh token as a compact string
+     */
+    public String generateRefreshToken(Authentication authentication, Long userType) {
+        return generateToken(authentication, userType, refreshTokenExpire);
+    }
+
+    /**
+     * Generates an access token for the specified username and user type.
+     *
+     * @param userType the type of user to include as a claim in the token
+     * @param userName the username to set as the subject of the token
+     * @return the generated access token as a compact string
+     */
+    public String generateAccessToken(Long userType, String userName) {
+        return generateToken(userType, userName, accessTokenExpire);
+    }
+
+    /**
+     * Generates a refresh token for the specified username and user type.
+     *
+     * @param userType the type of user to include as a claim in the token
+     * @param userName the username to set as the subject of the token
+     * @return the generated refresh token as a compact string
+     */
+    public String generateRefreshToken(Long userType, String userName) {
+        return generateToken(userType, userName, refreshTokenExpire);
+    }
+
+    /**
+     * Returns the configured expiration time for access tokens.
+     *
+     * @return the expiration time in milliseconds for access tokens
+     */
+    public Long accessTokenExpire() {
+        return accessTokenExpire;
+    }
+
+    /**
+     * Extracts the username (subject) from the provided JWT token.
+     *
+     * @param token the JWT token to parse
+     * @return the username extracted from the token's subject claim
+     */
+    public String getUsernameFromJWT(String token) {
+        Claims claims = Jwts.parser()
+                .setSigningKey(secretKey)
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.getSubject();
+    }
+
+    /**
+     * Extracts the user type from the provided JWT token.
+     *
+     * @param token the JWT token to parse
+     * @return the user type extracted from the token's "usertype" claim as a string
+     */
+    public String getUserTypeFromJWT(String token) {
+        Claims claims = Jwts.parser()
+                .setSigningKey(secretKey)
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.get("usertype").toString();
+    }
+
+    /**
+     * Validates the provided JWT token by checking its signature and expiration.
+     *
+     * @param token the JWT token to validate
+     * @return {@code true} if the token is valid, otherwise throws an exception
+     * @throws AuthenticationCredentialsNotFoundException if the token is invalid or cannot be parsed
+     */
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token);
+            return true;
+        } catch (Exception ex) {
+            throw new AuthenticationCredentialsNotFoundException("JWT token is not valid " + token);
+        }
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/security/SecurityConfig.java
+package com.nexalinx.nexadoc.security;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+/**
+ * Security configuration class for the application.
+ * Configures authentication, authorization, and security filters.
+ */
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(
+        prePostEnabled = true,
+        securedEnabled = true,
+        jsr250Enabled = true
+)
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    /**
+     * Array of public endpoints that don't require authentication.
+     * Includes Swagger documentation endpoints and auth endpoints.
+     */
+    private static final String[] PUBLIC_MATCHER = {
+            "/v3/api-docs/**",
+            "/configuration/ui",
+            "/swagger-ui.html",
+            "/swagger-resources/**",
+            "/configuration/security/**",
+            "/swagger-ui/**",
+            "/api/v1/auth/**",
+            "/webjars/**"
+    };
+
+    /**
+     * Configures the security filter chain for the application.
+     *
+     * @param http the HttpSecurity to configure
+     * @return the configured SecurityFilterChain
+     * @throws Exception if an error occurs during configuration
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests((requests) -> requests
+                        .requestMatchers(PUBLIC_MATCHER).permitAll()
+                        .anyRequest().authenticated())
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(httpSecurityHeadersConfigurer ->
+                        httpSecurityHeadersConfigurer.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable)) //to make accessible h2 console, it works as frame
+                .exceptionHandling(httpSecurityExceptionHandlingConfigurer ->
+                        httpSecurityExceptionHandlingConfigurer.authenticationEntryPoint(new CustomAuthEntryPoint()))
+                .addFilterBefore(new FirebaseAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+
+        // Set the custom AuthenticationManager for Firebase Authentication
+        http.authenticationManager(customAuthenticationManager());
+        return http.build();
+    }
+
+    /**
+     * Creates a custom AuthenticationManager for Firebase authentication.
+     * Sets the authentication in the SecurityContextHolder.
+     *
+     * @return the custom AuthenticationManager instance
+     */
+    @Bean
+    public AuthenticationManager customAuthenticationManager() {
+        return authentication -> {
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            return authentication;
+        };
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/service/AuthService.java
+package com.nexalinx.nexadoc.service;
+
+import com.nexalinx.nexadoc.dto.UserRegistrationRequest;
+import com.nexalinx.nexadoc.response.LoginResponse;
+import com.nexalinx.nexadoc.response.UserRegistrationResponse;
+
+/**
+ * Service interface for user registration.
+ */
+public interface AuthService {
+
+    /**
+     * Registers a new user and sends a verification email.
+     *
+     * @param request User registration request data.
+     * @return User registration response.
+     */
+    UserRegistrationResponse registerUser(UserRegistrationRequest request);
+
+    /**
+     * Sends an email verification link to an existing user.
+     *
+     * @param email Email of the user.
+     * @return email verification link
+     */
+    String resendVerificationEmail(String email);
+
+    /**
+     * @param idToken is consist of `idToken`
+     * @return LoginResponse
+     */
+    LoginResponse login(String idToken);
+}
+
+
+
+src/main/java/com/nexalinx/nexadoc/service/CheckEmailService.java
+package com.nexalinx.nexadoc.service;
+/**
+ * Service interface for Check if Email is Already Registered.
+ */
+public interface CheckEmailService {
+
+    /**
+     * Check if Email is Already Registered.
+     *
+     * @param email Email of the user.
+     * @return exists true or false
+     */
+    boolean emailExists(String email);
+}
+
+
+src/main/java/com/nexalinx/nexadoc/service/CurrentUserService.java
+package com.nexalinx.nexadoc.service;
+
+import com.nexalinx.nexadoc.dto.UpdateUserRequest;
+import com.nexalinx.nexadoc.response.CurrentUserResponse;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+
+public interface CurrentUserService {
+
+    /**
+     * Sets the avatar for the specified user.
+     *
+     * @param file           the file containing the avatar image.
+     * @param firebaseUserId the unique identifier of the user in Firebase.
+     * @throws IOException if an error occurs while processing the avatar file.
+     */
+    void setAvatar(MultipartFile file, String firebaseUserId) throws IOException;
+
+    /**
+     * Fetch details of the currently authenticated user.
+     *
+     * @param firebaseUserId the identifier of the current user derived from the authorization token.
+     * @return CurrentUserResponse containing the user details.
+     */
+    CurrentUserResponse getCurrentUser(String firebaseUserId);
+
+    /**
+     * Update the currently authenticated user's details.
+     *
+     * @param firebaseUserId the identifier of the current user derived from the authorization token.
+     * @param request        the request payload containing the updated user details.
+     */
+    void updateCurrentUser(String firebaseUserId, UpdateUserRequest request);
+}
+
+
+src/main/java/com/nexalinx/nexadoc/service/FirebaseStorageService.java
+package com.nexalinx.nexadoc.service;
+
+import com.nexalinx.nexadoc.enums.ReferenceType;
+import com.nexalinx.nexadoc.response.MediaStorageResponse;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+
+/**
+ * Service interface for handling file storage operations using Firebase Storage.
+ */
+public interface FirebaseStorageService {
+
+    /**
+     * Uploads a file to Firebase Storage and returns its accessible URL.
+     *
+     * @param referenceType The type of entity the file is associated with (e.g., "UsersAvatars", "ArticlesCoverImages").
+     * @param referenceId   The unique identifier of the entity instance the file belongs to.
+     * @throws IOException If an error occurs during file upload.
+     */
+    void uploadFile(MultipartFile file, Integer ownerId, ReferenceType referenceType, Integer referenceId) throws IOException;
+
+    /**
+     * Deletes all media files associated with a given reference ID and reference type.
+     *
+     * @param referenceId   The ID of the entity the files belong to.
+     * @param referenceType The type of entity the files are associated with.
+     */
+    void deleteFilesByReference(Integer referenceId, ReferenceType referenceType);
+
+    /**
+     * Retrieve file information from local database.
+     *
+     * @param referenceType The type of entity the file is associated with (e.g., "UsersAvatars", "ArticlesCoverImages").
+     * @param referenceId   The unique identifier of the entity instance the file belongs to.
+     * @return MediaStorageResponse containing file information, or an error response if file retrieval fails.
+     */
+    MediaStorageResponse getMediaStorage(Integer referenceId, ReferenceType referenceType);
+
+}
+
+src/main/java/com/nexalinx/nexadoc/service/ReviewAndRatingService.java
+package com.nexalinx.nexadoc.service;
+
+import com.nexalinx.nexadoc.dto.ReviewAndRatingDto;
+import com.nexalinx.nexadoc.exception.CustomMessagePresentException;
+import com.nexalinx.nexadoc.exception.ResourceNotFoundException;
+import com.nexalinx.nexadoc.utils.PaginatedResponse;
+
+import java.util.List;
+
+/**
+ * Service interface for managing user reviews and ratings.
+ * Provides CRUD operations for reviews and ratings with user-specific access control.
+ */
+public interface ReviewAndRatingService {
+
+    /**
+     * Creates a new review and rating for the authenticated user.
+     *
+     * @param reviewAndRatingDto the review and rating details to create
+     * @param firebaseUserId     the Firebase ID of the authenticated user
+     * @return the created review and rating DTO
+     * @throws CustomMessagePresentException if validation fails
+     * @throws ResourceNotFoundException     if user not found
+     */
+    ReviewAndRatingDto createReviewAndRating(ReviewAndRatingDto reviewAndRatingDto, String firebaseUserId);
+
+    /**
+     * Updates an existing review and rating for the authenticated user.
+     *
+     * @param id                 the ID of the review and rating to update
+     * @param reviewAndRatingDto the review and rating details to update
+     * @param firebaseUserId     the Firebase ID of the authenticated user
+     * @throws CustomMessagePresentException if validation fails
+     * @throws ResourceNotFoundException     if review and rating or user not found
+     */
+    void updateReviewAndRating(Integer id, ReviewAndRatingDto reviewAndRatingDto, String firebaseUserId);
+
+    /**
+     * Retrieves a paginated list of reviews and ratings for a specific user.
+     *
+     * @param limit          The maximum number of reviews and ratings to return.
+     * @param offset         The starting point for the reviews and ratings to return (used for pagination).
+     * @param firebaseUserId The Firebase user ID of the authenticated user making the request.
+     * @return A {@link PaginatedResponse} object containing the filtered and paginated list of reviews and ratings.
+     * @throws CustomMessagePresentException If an error occurs while retrieving the reviews and ratings.
+     */
+    PaginatedResponse getReviewsAndRatings(Integer limit, Integer offset, String firebaseUserId);
+
+    /**
+     * Retrieves a specific review and rating by ID for the authenticated user.
+     *
+     * @param id             the ID of the review and rating to retrieve
+     * @param firebaseUserId the Firebase ID of the authenticated user
+     * @return the review and rating DTO
+     * @throws ResourceNotFoundException if review and rating or user not found
+     */
+    ReviewAndRatingDto getReviewAndRatingById(Integer id, String firebaseUserId);
+
+    /**
+     * Soft-deletes a review and rating for the authenticated user by setting the DeletedAt timestamp.
+     *
+     * @param id             the ID of the review and rating to delete
+     * @param firebaseUserId the Firebase ID of the authenticated user
+     * @throws ResourceNotFoundException if review and rating or user not found
+     */
+    void deleteReviewAndRating(Integer id, String firebaseUserId);
+}
+
+
+src/main/java/com/nexalinx/nexadoc/service/UserService.java
+package com.nexalinx.nexadoc.service;
+
+import com.nexalinx.nexadoc.entity.User;
+
+import java.util.Optional;
+
+/**
+ * Service interface for managing user-related operations.
+ */
+public interface UserService {
+
+    /**
+     * Checks if a user exists by their email address and returns an optional user entity.
+     *
+     * @param email the email address to search for
+     * @return an {@link Optional} containing the {@link User} if found, or empty if not found
+     */
+    Optional<User> findByEmailExist(String email);
+}
+
+
+
+src/main/java/com/nexalinx/nexadoc/utils/CommonDataHelper.java
+package com.nexalinx.nexadoc.utils;
+
+import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Component
+public class CommonDataHelper {
+
+    public void getCommonData(Map<String, ?> searchResult, PaginatedResponse response, List<?> list) {
+
+        Integer currentPage = (Integer) searchResult.get("currentPage");
+        Integer nextPage = (Integer) searchResult.get("nextPage");
+        Integer previousPage = (Integer) searchResult.get("previousPage");
+
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("currentPage", currentPage);
+        meta.put("nextPage", nextPage);
+        meta.put("previousPage", previousPage);
+        meta.put("totalPages", searchResult.get("totalPages"));
+        meta.put("total", searchResult.get("total"));
+
+        response.setList(list);
+        response.setMeta(meta);
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/utils/DotenvLoader.java
+package com.nexalinx.nexadoc.utils;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
+
+public class DotenvLoader {
+
+    public static void loadDotenv() {
+        Properties properties = new Properties();
+        try (FileInputStream fis = new FileInputStream(".env")) {
+            properties.load(fis);
+            properties.forEach((key, value) -> System.setProperty(key.toString(), value.toString()));
+        } catch (IOException e) {
+            System.err.println("Failed to load .env file: " + e.getMessage());
+        }
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/utils/PaginatedResponse.java
+package com.nexalinx.nexadoc.utils;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+public class PaginatedResponse {
+
+    public Object list;
+
+    public Object meta;
+}
+
+src/main/java/com/nexalinx/nexadoc/utils/PaginationParameters.java
+package com.nexalinx.nexadoc.utils;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Utility class for handling pagination parameters.
+ */
+public class PaginationParameters {
+
+    /**
+     * Populates the provided map with pagination details, including the current page, next page, previous page,
+     * page size, total number of items, total pages, and the list of items for the current page.
+     *
+     * @param map   The map to populate with pagination details.
+     * @param page  The current page number (0-based index).
+     * @param total The total number of items available.
+     * @param size  The number of items per page.
+     * @param lists The list of items for the current page.
+     */
+    public static void getData(Map<String, Object> map, Integer page, Long total, Integer size, List<?> lists) {
+        // Validate size to avoid division by zero or incorrect calculations
+        if (size == null || size <= 0) {
+            throw new IllegalArgumentException("Page size must be greater than zero.");
+        }
+
+        // Calculate total pages
+        int totalPages = (int) Math.ceil((double) total / size);
+
+        // Determine next and previous pages
+        Integer nextPage = (page + 1 < totalPages) ? page + 1 : null;
+        Integer previousPage = (page > 0) ? page - 1 : null;
+
+        // Populate the map with pagination information
+        map.put("currentPage", page);
+        map.put("nextPage", nextPage);
+        map.put("previousPage", previousPage);
+        map.put("totalPages", totalPages);
+        map.put("total", total);
+        map.put("lists", lists);
+    }
+}
+
+src/main/java/com/nexalinx/nexadoc/utils/Response.java
+package com.nexalinx.nexadoc.utils;
+
+import org.json.simple.JSONObject;
+
+public interface Response {
+
+    JSONObject getJson();
+}
+
+src/main/java/com/nexalinx/nexadoc/utils/ResponseBuilder.java
+package com.nexalinx.nexadoc.utils;
+
+import com.nexalinx.nexadoc.constant.ResponseStatus;
+import lombok.Data;
+import org.json.simple.JSONObject;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Data
+public class ResponseBuilder implements Response {
+
+    private final ResponseType type;
+    private final Object markList = null;
+    private String status = null;
+    private Object data = null;
+    private Object meta = null;
+    private String message = null;
+    private Object errors = null;
+
+    public ResponseBuilder(ResponseType type) {
+        this.type = type;
+    }
+
+    public static ResponseBuilder paginatedSuccess(PaginatedResponse data) {
+        ResponseBuilder response = new ResponseBuilder(ResponseType.DATA);
+        response.data = data.list;
+        response.meta = data.meta;
+        response.status = ResponseStatus.SUCCESS;
+        return response;
+    }
+
+
+    public static ResponseBuilder paginatedSuccess(PaginatedResponse data, String message) {
+        ResponseBuilder response = new ResponseBuilder(ResponseType.DATA);
+        response.data = data.list;
+        response.meta = data.meta;
+        response.message = message;
+        response.status = ResponseStatus.SUCCESS;
+        return response;
+    }
+
+    public static ResponseBuilder success(Object data) {
+        ResponseBuilder response = new ResponseBuilder(ResponseType.DATA);
+        response.data = data;
+        response.status = ResponseStatus.SUCCESS;
+        return response;
+    }
+
+    public static ResponseBuilder success(Object data, String message) {
+        ResponseBuilder response = new ResponseBuilder(ResponseType.DATA);
+        response.data = data;
+        response.message = message;
+        response.status = ResponseStatus.SUCCESS;
+        return response;
+    }
+
+    public static ResponseBuilder error(Object errors) {
+        ResponseBuilder response = new ResponseBuilder(ResponseType.ERROR);
+        response.errors = errors;
+        response.status = ResponseStatus.ERROR;
+        return response;
+    }
+
+    public static ResponseBuilder error(Object errors, String message) {
+        ResponseBuilder response = new ResponseBuilder(ResponseType.ERROR);
+        response.errors = errors;
+        response.message = message;
+        response.status = ResponseStatus.ERROR;
+        return response;
+    }
+
+    @Override
+    public JSONObject getJson() {
+
+        Map<String, Object> maps = new HashMap<String, Object>();
+
+        switch (this.type) {
+            case DATA:
+                maps.put("status", status);
+                maps.put("data", data);
+                maps.put("meta", meta);
+                maps.put("message", message);
+            case ERROR:
+                maps.put("status", status);
+                maps.put("message", message);
+                maps.put("errors", errors);
+        }
+
+        return new JSONObject(maps);
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/utils/ResponseType.java
+package com.nexalinx.nexadoc.utils;
+
+public enum ResponseType {
+    DATA,
+    ERROR
+}
+
+
+src/main/java/com/nexalinx/nexadoc/validation/AvatarValidator.java
+package com.nexalinx.nexadoc.validation;
+
+import com.nexalinx.nexadoc.annotation.ValidAvatar;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class AvatarValidator implements ConstraintValidator<ValidAvatar, MultipartFile> {
+
+    @Value("${avatar.max-size}")
+    private long maxSize;
+
+    @Value("${avatar.allowed-formats}")
+    private String allowedFormats;
+
+    private List<String> allowedContentTypes;
+
+    @Override
+    public void initialize(ValidAvatar constraintAnnotation) {
+        allowedContentTypes = Arrays.asList(allowedFormats.split(","));
+    }
+
+    @Override
+    public boolean isValid(MultipartFile file, ConstraintValidatorContext context) {
+        if (file == null || file.isEmpty()) {
+            context.disableDefaultConstraintViolation();
+            context.buildConstraintViolationWithTemplate("File cannot be empty.").addConstraintViolation();
+            return false;
+        }
+
+        String contentType = file.getContentType();
+        if (!allowedContentTypes.contains(contentType)) {
+            context.disableDefaultConstraintViolation();
+            context.buildConstraintViolationWithTemplate(
+                            "Invalid file format. Allowed formats are: " + String.join(", ", allowedContentTypes) + ".")
+                    .addConstraintViolation();
+            return false;
+        }
+
+        if (file.getSize() > maxSize) {
+            context.disableDefaultConstraintViolation();
+            context.buildConstraintViolationWithTemplate("File size exceeds the maximum allowed limit of 5MB.").addConstraintViolation();
+            return false;
+        }
+
+        return true;
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/validation/EmailValidator.java
+package com.nexalinx.nexadoc.validation;
+
+import com.nexalinx.nexadoc.annotation.ValidEmail;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+
+import java.util.regex.Pattern;
+
+public class EmailValidator implements ConstraintValidator<ValidEmail, String> {
+
+    private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
+
+    @Override
+    public boolean isValid(String email, ConstraintValidatorContext context) {
+        return email != null && EMAIL_PATTERN.matcher(email).matches();
+    }
+}
+
+
+
+src/main/java/com/nexalinx/nexadoc/validation/EnumValidator.java
+package com.nexalinx.nexadoc.validation;
+
+import com.nexalinx.nexadoc.annotation.ValidEnum;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+
+import java.util.Arrays;
+
+public class EnumValidator implements ConstraintValidator<ValidEnum, String> {
+    private Class<? extends Enum<?>> enumClass;
+
+    @Override
+    public void initialize(ValidEnum constraintAnnotation) {
+        this.enumClass = constraintAnnotation.enumClass();
+    }
+
+    @Override
+    public boolean isValid(String value, ConstraintValidatorContext context) {
+        if (value == null) {
+            return false; // Prevents null values
+        }
+        return Arrays.stream(enumClass.getEnumConstants())
+                .map(Enum::name)
+                .anyMatch(enumValue -> enumValue.equals(value));
+    }
+}
+
+
+src/main/java/com/nexalinx/nexadoc/NexaDocApplication.java
+package com.nexalinx.nexadoc;
+
+import com.nexalinx.nexadoc.utils.DotenvLoader;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class NexaDocApplication {
+    public static void main(String[] args) {
+        DotenvLoader.loadDotenv(); // Load .env file
+        SpringApplication.run(NexaDocApplication.class, args);
+    }
+}
+
+
+
+src/main/resources/db/migration/V1__create_users.sql
+-- Create the user table
+CREATE TABLE IF NOT EXISTS Users (
+    id INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    updated_at TIMESTAMP(6) WITH TIME ZONE NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(256) NOT NULL UNIQUE,
+    is_email_verified BOOLEAN DEFAULT FALSE,
+    status int NOT NULL,
+    firebase_user_id VARCHAR(100) NOT NULL
+    );
+
+src/main/resources/db/migration/V2__create_media_storage.sql
+-- Create the media_storage table
+CREATE TABLE IF NOT EXISTS media_storage (
+     id INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+     owner_id INT NULL,
+     reference_type INT NOT NULL,
+     reference_id INT NOT NULL,
+     external_id VARCHAR(64) NOT NULL,
+     URL VARCHAR(512) NOT NULL,
+     mime_type VARCHAR(64) NOT NULL,
+     created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+     updated_at TIMESTAMP(6) WITH TIME ZONE NULL
+    );
+
+src/main/resources/db/migration/V3__create_review_and_rating.sql
+-- Create the review_and_rating table
+CREATE TABLE review_and_rating (
+    id INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    user_id INT NOT NULL,
+    comment TEXT,
+    rating INT,
+    created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    updated_at TIMESTAMP(6) WITH TIME ZONE NULL,
+    deleted_at TIMESTAMP(6) WITH TIME ZONE NULL,
+    CONSTRAINT fk_review_and_rating_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+src/main/resources/application.yml
+# Server Configuration
+server:
+  port: 8000
+
+  error:
+    include-stacktrace: always
+  compression:
+    enabled: true
+  address: 0.0.0.0
+
+# Spring Configuration
+spring:
+  jackson:
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSSXXX
+    time-zone: UTC
+  application:
+    name: nexaDoc
+  main:
+    allow-bean-definition-overriding: true
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 15
+      idle-timeout: 30000
+      pool-name: HikariPostgresPool
+      max-lifetime: 2000000
+      auto-commit: true
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+      connection-timeout: 30000
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-migration-naming: true
+    ignore-unsupported-database: true
+    locations: "classpath:db/migration"
+    schemas: ${DB_SCHEMA}
+
+  # JPA Configuration
+  jpa:
+    # Hibernate
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate.format_sql: true
+
+
+  # Servlet Configuration
+  servlet:
+    multipart:
+      enabled: true
+      location: /tmp
+      max-file-size: ${AVATAR_MAX_SIZE}
+      max-request-size: ${AVATAR_MAX_SIZE}
+      resolve-lazily: false
+
+application:
+  security:
+    jwt:
+      secret-key: 4bb6d1dfbafb64a681139d1586b6f1160d18159afd57c8c79136d7490630407c
+      access-token-expiration: 86400000
+      refresh-token-expiration: 604800000
+
+# Management Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+logging:
+  level:
+    org.springdoc: DEBUG
+
+  doc: # Swagger-specific settings
+    api-docs:
+      path: /v3/api-docs
+    swagger-ui:
+      path: /swagger-ui.html
+
+firebase:
+  config:
+    path: firebase-service-account.json
+
+avatar:
+  max-size: ${AVATAR_MAX_SIZE}
+  allowed-formats: ${AVATAR_ALLOWED_FORMATS}
+
+
+
+Above is the whole src of our project codebase Nexadoc.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Now, Build GET /api/v1/landing-
+page/search | where we can search
+using like query of document title,
+description, category.
+
+Give whole code, as well as give me details of testing it using POSTMAN.
+
+
+
+
+
+// Add this to src/main/java/com/nexalinx/nexadoc/entity/Document.java
+package com.nexalinx.nexadoc.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
+
+@Getter
+@Setter
+@Entity
+@DynamicInsert
+@DynamicUpdate
+@NoArgsConstructor
+@Table(name = "documents")
+public class Document extends BaseEntityWithUpdateAndDelete {
+
+    @Column(name = "title", nullable = false)
+    private String title;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "category")
+    private String category;
+}
+
+
+
+
+
+
+
+// Add this to src/main/java/com/nexalinx/nexadoc/repository/DocumentRepository.java
+package com.nexalinx.nexadoc.repository;
+
+import com.nexalinx.nexadoc.entity.Document;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface DocumentRepository extends JpaRepository<Document, Integer> {
+
+    List<Document> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCaseOrCategoryContainingIgnoreCase(
+            String titleQuery, String descriptionQuery, String categoryQuery);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Add this to src/main/java/com/nexalinx/nexadoc/dto/DocumentDto.java
+package com.nexalinx.nexadoc.dto;
+
+import com.nexalinx.nexadoc.entity.Document;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class DocumentDto {
+
+    private Integer id;
+    private String title;
+    private String description;
+    private String category;
+
+    public static DocumentDto from(Document document) {
+        DocumentDto dto = new DocumentDto();
+        dto.setId(document.getId());
+        dto.setTitle(document.getTitle());
+        dto.setDescription(document.getDescription());
+        dto.setCategory(document.getCategory());
+        return dto;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+// Add this to src/main/java/com/nexalinx/nexadoc/service/DocumentService.java
+package com.nexalinx.nexadoc.service;
+
+import com.nexalinx.nexadoc.entity.Document;
+
+import java.util.List;
+
+public interface DocumentService {
+
+    List<Document> searchDocuments(String query);
+}
+
+
+
+
+
+
+
+// Add this to src/main/java/com/nexalinx/nexadoc/service/impl/DocumentServiceImpl.java
+package com.nexalinx.nexadoc.service.impl;
+
+import com.nexalinx.nexadoc.entity.Document;
+import com.nexalinx.nexadoc.repository.DocumentRepository;
+import com.nexalinx.nexadoc.service.DocumentService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class DocumentServiceImpl implements DocumentService {
+
+    private final DocumentRepository documentRepository;
+
+    @Override
+    public List<Document> searchDocuments(String query) {
+        return documentRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCaseOrCategoryContainingIgnoreCase(
+                query, query, query);
+    }
+}
+
+
+
+
+
+
+
+
+
+// Add this to src/main/java/com/nexalinx/nexadoc/controller/LandingPageController.java
+package com.nexalinx.nexadoc.controller;
+
+import com.nexalinx.nexadoc.dto.DocumentDto;
+import com.nexalinx.nexadoc.service.DocumentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.json.simple.JSONObject;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static com.nexalinx.nexadoc.utils.ResponseBuilder.success;
+import static org.springframework.http.ResponseEntity.ok;
+
+@RestController
+@RequestMapping("/api/v1/landing-page")
+@RequiredArgsConstructor
+@Tag(name = "Landing Page", description = "API for landing page operations")
+public class LandingPageController {
+
+    private final DocumentService documentService;
+
+    @Operation(summary = "Search documents", description = "Searches documents by title, description, or category using LIKE query.")
+    @GetMapping("/search")
+    public ResponseEntity<JSONObject> searchDocuments(@RequestParam("query") String query) {
+        List<DocumentDto> results = documentService.searchDocuments(query)
+                .stream()
+                .map(DocumentDto::from)
+                .collect(Collectors.toList());
+        return ok(success(results, "Documents searched successfully.").getJson());
+    }
+}
+
+
+
+
+
+
+
+
+
+-- Add this to src/main/resources/db/migration/V4__create_documents.sql
+CREATE TABLE IF NOT EXISTS documents (
+    id INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(100),
+    created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    updated_at TIMESTAMP(6) WITH TIME ZONE NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    deleted_at TIMESTAMP(6) WITH TIME ZONE NULL
+);
+
+
+
+
+
+
+
+
+
+// Update src/main/java/com/nexalinx/nexadoc/security/SecurityConfig.java
+// Add "/api/v1/landing-page/**" to the PUBLIC_MATCHER array to make it public (no auth required)
+private static final String[] PUBLIC_MATCHER = {
+        "/v3/api-docs/**",
+        "/configuration/ui",
+        "/swagger-ui.html",
+        "/swagger-resources/**",
+        "/configuration/security/**",
+        "/swagger-ui/**",
+        "/api/v1/auth/**",
+        "/api/v1/landing-page/**",  // Add this line
+        "/webjars/**"
+};
+
+
+
+
+
+Integration Steps
+
+Add the new files to their respective packages as shown above.
+Update SecurityConfig: Add the landing-page path to PUBLIC_MATCHER to allow unauthenticated access (assuming landing page search is public).
+Database Migration: Run the application; Flyway will apply the new migration (V4) to create the documents table.
+Dependency Injection: Ensure DocumentServiceImpl is scanned (it's in impl package; if not, adjust component scan if needed).
+Build and Run: Rebuild and restart the Spring Boot application.
+
+Testing with Postman
+To test the endpoint, use Postman (or any API client). Assume the application is running on http://localhost:8000 and you have some sample data in the documents table (you can insert data manually via SQL or add a temporary POST endpoint for testing).
+Step 1: Insert Sample Data (Optional, via SQL or H2 Console if enabled)
+
+Use a database tool (e.g., pgAdmin for PostgreSQL) to insert test data:
+sqlINSERT INTO documents (title, description, category) VALUES 
+('Sample Doc 1', 'This is a test description for document 1', 'Category A'),
+('Sample Doc 2', 'Another description like this', 'Category B'),
+('Test Document', 'Description containing keyword', 'Test Category');
+
+
+Step 2: Postman Request Setup
+
+Method: GET
+URL: http://localhost:8000/api/v1/landing-page/search?query=test
+
+Replace test with your search term (e.g., like, category, doc).
+
+
+Headers: None required (since public). If you didn't make it public, add Authorization: Bearer <firebase-jwt-token>.
+Params:
+
+Key: query
+Value: Your search string (e.g., sample to match titles/descriptions/categories containing "sample").
+
+
+Body: None (it's GET).
+
+Step 3: Expected Response
+
+Status: 200 OK
+Body (JSON example if query="sample"):
+json{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "title": "Sample Doc 1",
+      "description": "This is a test description for document 1",
+      "category": "Category A"
+    },
+    {
+      "id": 2,
+      "title": "Sample Doc 2",
+      "description": "Another description like this",
+      "category": "Category B"
+    }
+  ],
+  "message": "Documents searched successfully."
+}
+
+If no results: Empty data array.
+Error Cases:
+
+Missing query param: 400 Bad Request (Spring will handle as missing param).
+Invalid query: Still 200 with empty results.
+
+
+
+Step 4: Additional Tests
+
+Case Insensitive: Query "SAMPLE" should match "Sample Doc 1".
+Partial Match: Query "doc" should match titles with "Doc".
+Multiple Fields: Query "category" should match categories with "Category".
+No Query: Add @RequestParam(required = false, defaultValue = "") if you want to handle empty query (return all), but current code requires it.
+
+If issues arise (e.g., endpoint not found), check logs for errors or ensure migration ran.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+well, i have currently jdk and eclipse installed, and i initialised spring project by:
+1. Open-> https://start.spring.io/
+2. Project -> Maven  -> Springboot- 3.5.5 -> Project metadata - com.arka.core -> artifact- Spring core concepts -> Packaging - jar -> java - 24 -> (Skip dependencies as of now) -> generate -> download zip -> open that directory with IntelliJ
+3. Now go to src/main/java
+
+This is how i wrote springboot helloworld program.
+
+
+NOw for the above task, how should i get forward.
+
+
+
+
+Thank you for sharing the details of how you initialized your Spring Boot project and your current setup (JDK, Eclipse, and Spring Boot 3.5.5 with Java 24). Since you've provided the complete NexaDoc codebase and the additional code for the new `/api/v1/landing-page/search` endpoint, I’ll guide you step-by-step on how to integrate the provided code into your Spring Boot project and proceed with running and testing it. I’ll also address how to set up the necessary dependencies, database, and configurations to align with the NexaDoc codebase, assuming you want to incorporate the new endpoint into a similar project structure.
+
+### Step-by-Step Guide to Implement the Search Endpoint in Your Spring Boot Project
+
+#### 1. **Set Up Your Project Structure**
+Since you’ve initialized a basic Spring Boot project using Spring Initializr without dependencies, you’ll need to add the dependencies required by the NexaDoc codebase to support the search endpoint, database operations, and other features. Below, I’ll outline the steps to update your project and add the provided code.
+
+1. **Update `pom.xml` with Required Dependencies**
+   The NexaDoc codebase uses Spring Data JPA, Flyway, PostgreSQL, Lombok, Swagger, and Firebase. Update your `pom.xml` to include these dependencies:
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <project xmlns="http://maven.apache.org/POM/4.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+       <modelVersion>4.0.0</modelVersion>
+       <groupId>com.arka.core</groupId>
+       <artifactId>Spring-core-concepts</artifactId>
+       <version>0.0.1-SNAPSHOT</version>
+       <name>Spring-core-concepts</name>
+       <description>Demo project for Spring Boot</description>
+
+       <parent>
+           <groupId>org.springframework.boot</groupId>
+           <artifactId>spring-boot-starter-parent</artifactId>
+           <version>3.3.5</version>
+           <relativePath/>
+       </parent>
+
+       <properties>
+           <java.version>24</java.version>
+       </properties>
+
+       <dependencies>
+           <!-- Spring Boot Web -->
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-web</artifactId>
+           </dependency>
+           <!-- Spring Data JPA -->
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-data-jpa</artifactId>
+           </dependency>
+           <!-- PostgreSQL Driver -->
+           <dependency>
+               <groupId>org.postgresql</groupId>
+               <artifactId>postgresql</artifactId>
+               <scope>runtime</scope>
+           </dependency>
+           <!-- Flyway for Database Migrations -->
+           <dependency>
+               <groupId>org.flywaydb</groupId>
+               <artifactId>flyway-core</artifactId>
+           </dependency>
+           <!-- Lombok -->
+           <dependency>
+               <groupId>org.projectlombok</groupId>
+               <artifactId>lombok</artifactId>
+               <optional>true</optional>
+           </dependency>
+           <!-- Swagger/OpenAPI -->
+           <dependency>
+               <groupId>org.springdoc</groupId>
+               <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+               <version>2.6.0</version>
+           </dependency>
+           <!-- JSON Simple for ResponseBuilder -->
+           <dependency>
+               <groupId>com.googlecode.json-simple</groupId>
+               <artifactId>json-simple</artifactId>
+               <version>1.1.1</version>
+           </dependency>
+           <!-- QueryDSL for custom queries -->
+           <dependency>
+               <groupId>com.querydsl</groupId>
+               <artifactId>querydsl-jpa</artifactId>
+               <version>5.1.0</version>
+               <classifier>jakarta</classifier>
+           </dependency>
+           <dependency>
+               <groupId>com.querydsl</groupId>
+               <artifactId>querydsl-apt</artifactId>
+               <version>5.1.0</version>
+               <classifier>jakarta</classifier>
+               <scope>provided</scope>
+           </dependency>
+       </dependencies>
+
+       <build>
+           <plugins>
+               <plugin>
+                   <groupId>org.springframework.boot</groupId>
+                   <artifactId>spring-boot-maven-plugin</artifactId>
+                   <configuration>
+                       <excludes>
+                           <exclude>
+                               <groupId>org.projectlombok</groupId>
+                               <artifactId>lombok</artifactId>
+                           </exclude>
+                       </excludes>
+                   </configuration>
+               </plugin>
+               <!-- QueryDSL APT Processor -->
+               <plugin>
+                   <groupId>com.mysema.maven</groupId>
+                   <artifactId>apt-maven-plugin</artifactId>
+                   <version>1.1.3</version>
+                   <executions>
+                       <execution>
+                           <goals>
+                               <goal>process</goal>
+                           </goals>
+                           <configuration>
+                               <processor>com.querydsl.apt.jpa.JPAAnnotationProcessor</processor>
+                               <outputDirectory>target/generated-sources/java</outputDirectory>
+                           </configuration>
+                       </execution>
+                   </executions>
+               </plugin>
+           </plugins>
+       </build>
+   </project>
+   ```
+
+   **Note**: The Firebase dependency is excluded because the search endpoint doesn’t require it. If you plan to integrate other NexaDoc features (e.g., avatar upload), add Firebase dependencies later.
+
+2. **Create Package Structure**
+   In `src/main/java`, create the following package structure to match NexaDoc:
+   ```
+   com.arka.core
+   ├── controller
+   ├── dto
+   ├── entity
+   ├── repository
+   ├── service
+   │   └── impl
+   └── utils
+   ```
+
+3. **Add Provided Code Files**
+   Copy the provided code into the appropriate packages:
+   - **Entity**: Add `Document.java` to `com.arka.core.entity`.
+   - **DTO**: Add `DocumentDto.java` to `com.arka.core.dto`.
+   - **Repository**: Add `DocumentRepository.java` to `com.arka.core.repository`.
+   - **Service**: Add `DocumentService.java` to `com.arka.core.service`.
+   - **Service Implementation**: Add `DocumentServiceImpl.java` to `com.arka.core.service.impl`.
+   - **Controller**: Add `LandingPageController.java` to `com.arka.core.controller`.
+
+4. **Add Utility Classes**
+   The `ResponseBuilder` and `ResponseType` classes from NexaDoc are required for the controller’s response format. Add them to `com.arka.core.utils`:
+
+   ```java
+   // src/main/java/com/arka/core/utils/ResponseType.java
+   package com.arka.core.utils;
+
+   public enum ResponseType {
+       DATA,
+       ERROR
+   }
+   ```
+
+   ```java
+   // src/main/java/com/arka/core/utils/ResponseBuilder.java
+   package com.arka.core.utils;
+
+   import org.json.simple.JSONObject;
+   import lombok.Data;
+
+   import java.util.HashMap;
+   import java.util.Map;
+
+   @Data
+   public class ResponseBuilder implements Response {
+
+       private final ResponseType type;
+       private String status = null;
+       private Object data = null;
+       private Object meta = null;
+       private String message = null;
+       private Object errors = null;
+
+       public ResponseBuilder(ResponseType type) {
+           this.type = type;
+       }
+
+       public static ResponseBuilder success(Object data) {
+           ResponseBuilder response = new ResponseBuilder(ResponseType.DATA);
+           response.data = data;
+           response.status = "success";
+           return response;
+       }
+
+       public static ResponseBuilder success(Object data, String message) {
+           ResponseBuilder response = new ResponseBuilder(ResponseType.DATA);
+           response.data = data;
+           response.message = message;
+           response.status = "success";
+           return response;
+       }
+
+       public static ResponseBuilder error(Object errors) {
+           ResponseBuilder response = new ResponseBuilder(ResponseType.ERROR);
+           response.errors = errors;
+           response.status = "error";
+           return response;
+       }
+
+       public static ResponseBuilder error(Object errors, String message) {
+           ResponseBuilder response = new ResponseBuilder(ResponseType.ERROR);
+           response.errors = errors;
+           response.message = message;
+           response.status = "error";
+           return response;
+       }
+
+       @Override
+       public JSONObject getJson() {
+           Map<String, Object> maps = new HashMap<>();
+           switch (this.type) {
+               case DATA:
+                   maps.put("status", status);
+                   maps.put("data", data);
+                   maps.put("meta", meta);
+                   maps.put("message", message);
+                   break;
+               case ERROR:
+                   maps.put("status", status);
+                   maps.put("message", message);
+                   maps.put("errors", errors);
+                   break;
+           }
+           return new JSONObject(maps);
+       }
+   }
+   ```
+
+   ```java
+   // src/main/java/com/arka/core/utils/Response.java
+   package com.arka.core.utils;
+
+   import org.json.simple.JSONObject;
+
+   public interface Response {
+       JSONObject getJson();
+   }
+   ```
+
+5. **Add Database Migration**
+   Create the Flyway migration file for the `documents` table:
+   - Path: `src/main/resources/db/migration/V1__create_documents.sql`
+   - Content:
+     ```sql
+     CREATE TABLE IF NOT EXISTS documents (
+         id INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+         title VARCHAR(255) NOT NULL,
+         description TEXT,
+         category VARCHAR(100),
+         created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+         updated_at TIMESTAMP(6) WITH TIME ZONE NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+         deleted_at TIMESTAMP(6) WITH TIME ZONE NULL
+     );
+     ```
+
+6. **Update `application.yml`**
+   Configure your `application.yml` to include database settings and Flyway. Since NexaDoc uses PostgreSQL, ensure you have a PostgreSQL instance running (e.g., locally via Docker or a hosted service). Update `src/main/resources/application.yml`:
+
+   ```yaml
+   server:
+     port: 8000
+     error:
+       include-stacktrace: always
+     compression:
+       enabled: true
+     address: 0.0.0.0
+
+   spring:
+     jackson:
+       date-format: yyyy-MM-dd'T'HH:mm:ss.SSSXXX
+       time-zone: UTC
+     application:
+       name: Spring-core-concepts
+     datasource:
+       url: jdbc:postgresql://localhost:5432/nexadoc
+       username: postgres
+       password: your_password
+       driver-class-name: org.postgresql.Driver
+       hikari:
+         minimum-idle: 1
+         maximum-pool-size: 15
+         idle-timeout: 30000
+         pool-name: HikariPostgresPool
+         max-lifetime: 2000000
+         auto-commit: true
+         transaction-isolation: TRANSACTION_READ_COMMITTED
+         connection-timeout: 30000
+     flyway:
+       enabled: true
+       baseline-on-migrate: true
+       validate-migration-naming: true
+       locations: classpath:db/migration
+       schemas: public
+     jpa:
+       hibernate:
+         ddl-auto: none
+       show-sql: true
+       open-in-view: false
+       properties:
+         hibernate.format_sql: true
+
+   logging:
+     level:
+       org.springdoc: DEBUG
+   ```
+
+   Replace `your_password` with your PostgreSQL password. If you’re using a different database setup, adjust `url`, `username`, and `password` accordingly.
+
+7. **Add Base Entities**
+   The `Document` entity extends `BaseEntityWithUpdateAndDelete`, which depends on `BaseEntity` and `BaseEntityWithUpdate`. Add these to `com.arka.core.entity`:
+
+   ```java
+   // src/main/java/com/arka/core/entity/BaseEntity.java
+   package com.arka.core.entity;
+
+   import com.fasterxml.jackson.annotation.JsonIgnore;
+   import jakarta.persistence.*;
+   import lombok.Getter;
+   import lombok.Setter;
+
+   import java.io.Serial;
+   import java.io.Serializable;
+   import java.time.OffsetDateTime;
+   import java.time.ZoneOffset;
+
+   @Getter
+   @Setter
+   @MappedSuperclass
+   public abstract class BaseEntity implements Serializable {
+
+       @Serial
+       private static final long serialVersionUID = 1L;
+
+       @Id
+       @GeneratedValue(strategy = GenerationType.IDENTITY)
+       @Column(name = "id")
+       private Integer id;
+
+       @JsonIgnore
+       @Column(name = "created_at", updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP AT TIME ZONE 'UTC'")
+       protected OffsetDateTime createdAt;
+
+       @PrePersist
+       public void prePersist() {
+           this.createdAt = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC);
+       }
+   }
+   ```
+
+   ```java
+   // src/main/java/com/arka/core/entity/BaseEntityWithUpdate.java
+   package com.arka.core.entity;
+
+   import com.fasterxml.jackson.annotation.JsonIgnore;
+   import jakarta.persistence.Column;
+   import jakarta.persistence.MappedSuperclass;
+   import jakarta.persistence.PreUpdate;
+   import lombok.Getter;
+   import lombok.Setter;
+
+   import java.io.Serial;
+   import java.time.OffsetDateTime;
+   import java.time.ZoneOffset;
+
+   @Getter
+   @Setter
+   @MappedSuperclass
+   public abstract class BaseEntityWithUpdate extends BaseEntity {
+
+       @Serial
+       private static final long serialVersionUID = 1L;
+
+       @JsonIgnore
+       @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP AT TIME ZONE 'UTC'")
+       protected OffsetDateTime updatedAt;
+
+       @PreUpdate
+       public void preUpdate() {
+           this.updatedAt = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC);
+       }
+   }
+   ```
+
+   ```java
+   // src/main/java/com/arka/core/entity/BaseEntityWithUpdateAndDelete.java
+   package com.arka.core.entity;
+
+   import com.fasterxml.jackson.annotation.JsonIgnore;
+   import jakarta.persistence.Column;
+   import jakarta.persistence.MappedSuperclass;
+   import jakarta.persistence.PreUpdate;
+   import lombok.Getter;
+   import lombok.Setter;
+
+   import java.time.OffsetDateTime;
+   import java.time.ZoneOffset;
+
+   @Getter
+   @Setter
+   @MappedSuperclass
+   public abstract class BaseEntityWithUpdateAndDelete extends BaseEntity {
+
+       @JsonIgnore
+       @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP AT TIME ZONE 'UTC'")
+       private OffsetDateTime updatedAt;
+
+       @JsonIgnore
+       @Column(name = "deleted_at")
+       private OffsetDateTime deletedAt;
+
+       @PreUpdate
+       public void preUpdate() {
+           this.updatedAt = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC);
+       }
+   }
+   ```
+
+8. **Update Application Class**
+   Ensure your main application class is set up to run the Spring Boot application:
+
+   ```java
+   // src/main/java/com/arka/core/SpringCoreConceptsApplication.java
+   package com.arka.core;
+
+   import org.springframework.boot.SpringApplication;
+   import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+   @SpringBootApplication
+   public class SpringCoreConceptsApplication {
+       public static void main(String[] args) {
+           SpringApplication.run(SpringCoreConceptsApplication.class, args);
+       }
+   }
+   ```
+
+#### 2. **Set Up PostgreSQL**
+1. **Install PostgreSQL**: If not installed, download and install PostgreSQL (e.g., from [postgresql.org](https://www.postgresql.org/)) or use Docker:
+   ```bash
+   docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=your_password -e POSTGRES_DB=nexadoc postgres
+   ```
+2. **Create Database**: Connect to PostgreSQL (e.g., via `psql` or pgAdmin) and create the `nexadoc` database:
+   ```sql
+   CREATE DATABASE nexadoc;
+   ```
+3. **Verify Connectivity**: Ensure the `application.yml` database credentials match your PostgreSQL setup.
+
+#### 3. **Run Flyway Migration**
+When you start the application, Flyway will automatically apply the migration (`V1__create_documents.sql`) to create the `documents` table. Verify in your database that the table exists:
+```sql
+SELECT * FROM documents;
+```
+
+#### 4. **Insert Test Data**
+To test the search endpoint, insert sample data into the `documents` table:
+```sql
+INSERT INTO documents (title, description, category) VALUES 
+('Sample Doc 1', 'This is a test description for document 1', 'Category A'),
+('Sample Doc 2', 'Another description like this', 'Category B'),
+('Test Document', 'Description containing keyword', 'Test Category');
+```
+
+#### 5. **Run the Application**
+1. **In Eclipse**:
+   - Import the project: `File > Import > Maven > Existing Maven Projects`, select your project directory.
+   - Right-click the project > `Run As > Maven build`, use goal `clean install` to build.
+   - Right-click `SpringCoreConceptsApplication.java` > `Run As > Java Application`.
+2. **Verify**: The application should start on `http://localhost:8000`. Check console logs for Flyway migration and server startup.
+
+#### 6. **Test the Endpoint with Postman**
+Follow these steps to test the `/api/v1/landing-page/search` endpoint:
+
+1. **Open Postman**:
+   - Create a new request.
+2. **Configure Request**:
+   - **Method**: GET
+   - **URL**: `http://localhost:8000/api/v1/landing-page/search?query=sample`
+     - Replace `sample` with other terms like `doc`, `category`, or `test` to test different matches.
+   - **Headers**: No headers needed (endpoint is public as per NexaDoc’s `SecurityConfig` modification).
+   - **Params**:
+     - Key: `query`
+     - Value: `sample` (or any search term).
+3. **Send Request**:
+   - Click `Send` and verify the response.
+4. **Expected Response** (for `query=sample`):
+   ```json
+   {
+       "status": "success",
+       "data": [
+           {
+               "id": 1,
+               "title": "Sample Doc 1",
+               "description": "This is a test description for document 1",
+               "category": "Category A"
+           },
+           {
+               "id": 2,
+               "title": "Sample Doc 2",
+               "description": "Another description like this",
+               "category": "Category B"
+           }
+       ],
+       "message": "Documents searched successfully."
+   }
+   ```
+5. **Test Cases**:
+   - **Case Insensitive**: Try `query=SAMPLE` (should match “Sample Doc 1”).
+   - **Partial Match**: Try `query=doc` (should match titles with “Doc”).
+   - **Category Search**: Try `query=Category` (should match “Category A” and “Category B”).
+   - **No Results**: Try `query=nonexistent` (should return empty `data` array).
+   - **Missing Query**: Without `query` param, expect a 400 Bad Request (or modify `@RequestParam` to `required=false` for empty query handling).
+
+#### 7. **Optional: Add Swagger for API Testing**
+Since you’ve included `springdoc-openapi`, access Swagger UI to test the endpoint:
+- URL: `http://localhost:8000/swagger-ui.html`
+- Find the `/api/v1/landing-page/search` endpoint, click “Try it out”, enter a query, and execute.
+
+#### 8. **Troubleshooting**
+- **Build Errors**: Ensure all dependencies are resolved (`mvn clean install`).
+- **Database Errors**: Verify PostgreSQL is running and credentials match `application.yml`.
+- **Endpoint Not Found**: Ensure `SecurityConfig` includes `/api/v1/landing-page/**` in `PUBLIC_MATCHER`.
+- **No Data**: Confirm test data is inserted in the `documents` table.
+- **Logs**: Check Eclipse console or logs for errors (set `logging.level.root=DEBUG` in `application.yml` for detailed logs).
+
+### Additional Notes
+- **NexaDoc Integration**: The provided code aligns with NexaDoc’s structure (e.g., `ResponseBuilder`, entity hierarchy). If you want to integrate the full NexaDoc codebase, you’ll need to add Firebase, security, and other components. Let me know if you need guidance on that.
+- **Java 24**: Spring Boot 3.3.5 supports Java 24, but ensure your Eclipse and JDK are configured correctly (e.g., `JAVA_HOME` points to JDK 24).
+- **Lombok in Eclipse**: Install Lombok in Eclipse (`Help > Install New Software`, use `https://projectlombok.org/p2`), or you may see getter/setter errors.
+- **Pagination**: The provided endpoint doesn’t include pagination. If you want to add it (like `ReviewAndRatingController`), I can extend the code with `limit` and `offset` params.
+
+### Next Steps
+If you encounter issues or want to extend the functionality (e.g., pagination, authentication, additional fields), let me know! For example, you could ask:
+- “How do I add pagination to the search endpoint?”
+- “Can you help integrate Firebase for authentication?”
+- “I’m getting a specific error in Eclipse; here’s the stack trace…”
+
+Test the endpoint as described, and share any feedback or errors for further assistance!
